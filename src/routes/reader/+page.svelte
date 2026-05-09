@@ -4,7 +4,7 @@
 	import sanitizeHtml from 'sanitize-html';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
-	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
+	import { ChevronLeft, } from 'lucide-svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 
 	let loading = $state(true);
@@ -421,6 +421,45 @@
 		}
 	}
 
+	let touchStartX = $state(0);
+	let touchEndX = $state(0);
+
+	function handleTouchStart(e: TouchEvent) {
+		touchStartX = e.changedTouches[0].screenX;
+	}
+
+	function handleTouchEnd(e: TouchEvent) {
+		touchEndX = e.changedTouches[0].screenX;
+		handleSwipe();
+	}
+
+	function handleSwipe() {
+		const swipeThreshold = 50;
+		if (touchEndX < touchStartX - swipeThreshold) {
+			nextPage();
+		} else if (touchEndX > touchStartX + swipeThreshold) {
+			previousPage();
+		}
+	}
+
+	function handleContentClick(e: MouseEvent) {
+		const selection = window.getSelection();
+		if (selection && selection.toString().length > 0) return;
+
+		const target = e.target as HTMLElement;
+		if (target.closest('a') || target.closest('button')) return;
+
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const x = e.clientX - rect.left;
+		const width = rect.width;
+		
+		if (x > width * 0.7) {
+			nextPage();
+		} else if (x < width * 0.3) {
+			previousPage();
+		}
+	}
+
 	// Type definition for JSZip file object
 	interface EpubFile {
 		async(type: 'blob'): Promise<Blob>;
@@ -494,40 +533,14 @@
 			<span class="hidden sm:inline">Back</span>
 		</Button>
 
-		<div class="max-w-xs truncate">
-			<h1 class="text-xl font-semibold text-gray-900">{bookTitle}</h1>
+		<div class="max-w-xs text-left sm:text-center">
+			<h1 class="truncate text-xl font-semibold text-gray-900">{bookTitle}</h1>
 			{#if chapters[currentChapter]}
-				<p class="text-sm text-gray-600 truncate">{chapters[currentChapter]?.title}</p>
+				<p class="truncate text-sm text-gray-600">{chapters[currentChapter]?.title}</p>
 			{/if}
 		</div>
 
-		<div class="flex items-center gap-2">
-			<Button
-				variant="outline"
-				size="sm"
-				onclick={previousPage}
-				disabled={currentChapter === 0 && currentPage === 0}
-				class="p-2"
-			>
-				<ChevronLeft class="h-4 w-4" />
-			</Button>
-
-			<div class="text-center">
-				<div class="text-sm text-gray-600">
-					Page {currentPage + 1} / {totalPages}
-				</div>
-			</div>
-
-			<Button
-				variant="outline"
-				size="sm"
-				onclick={nextPage}
-				disabled={currentChapter === chapters.length - 1 && currentPage === totalPages - 1}
-				class="p-2"
-			>
-				<ChevronRight class="h-4 w-4" />
-			</Button>
-		</div>
+		<div class="w-[72px]"></div>
 	</header>
 
 	<!-- Main Content -->
@@ -546,7 +559,14 @@
 				</Alert>
 			</div>
 		{:else}
-			<div class="h-full bg-gray-50 overflow-hidden">
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- svelte-ignore a11y_click_events_have_key_events -->
+			<div 
+				class="h-full bg-gray-50 overflow-hidden"
+				ontouchstart={handleTouchStart}
+				ontouchend={handleTouchEnd}
+				onclick={handleContentClick}
+			>
 				{#if currentChapter === 0 && chapters[0]?.title === '"Cover"'}
 					<!-- Cover page - fullscreen -->
 					<div class="h-full w-full bg-white">
@@ -578,8 +598,8 @@
 
 	<!-- Footer -->
 	<footer class="border-t border-gray-200 bg-white px-6 py-3 text-center">
-		<p class="text-sm text-gray-500">
-			Use arrow keys or buttons to navigate • Space to go to next page
+		<p class="text-sm text-gray-600">
+			Page {currentPage + 1} / {totalPages}
 		</p>
 	</footer>
 </div>
