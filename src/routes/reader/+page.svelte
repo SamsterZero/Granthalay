@@ -546,10 +546,10 @@
 				</Alert>
 			</div>
 		{:else}
-			<div class="h-full bg-white overflow-hidden">
+			<div class="h-full bg-gray-50 overflow-hidden">
 				{#if currentChapter === 0 && chapters[0]?.title === '"Cover"'}
 					<!-- Cover page - fullscreen -->
-					<div class="h-full w-full">
+					<div class="h-full w-full bg-white">
 						<div class="prose prose-lg max-w-none h-full w-full p-0 m-0">
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							{@html chapters[currentChapter].content}
@@ -557,15 +557,17 @@
 					</div>
 				{:else}
 					<!-- Regular chapters - multi-column paginated -->
-					<div class="h-full w-full overflow-hidden px-8 py-6" bind:clientWidth={containerWidth}>
-						<div class="h-full w-full" style="transform: translateX(-{currentPage * containerWidth}px); transition: transform 0.3s ease-in-out;">
-							<div 
-								bind:this={contentContainer}
-								class="h-full prose prose-lg max-w-none"
-								style="column-width: {containerWidth ? `calc(${containerWidth}px - 4rem)` : '100%'}; column-gap: 4rem; column-fill: auto;"
-							>
-								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-								{@html chapters[currentChapter].content}
+					<div class="h-full w-full flex justify-center">
+						<div class="h-full w-full max-w-3xl overflow-hidden bg-white px-8 py-8 shadow-sm border-x border-gray-200" bind:clientWidth={containerWidth}>
+							<div class="h-full w-full" style="transform: translateX(-{currentPage * containerWidth}px); transition: transform 0.3s ease-in-out;">
+								<div 
+									bind:this={contentContainer}
+									class="h-full prose prose-lg max-w-none"
+									style="column-width: {containerWidth ? `calc(${containerWidth}px - 4rem)` : '100%'}; column-gap: 4rem; column-fill: auto;"
+								>
+									<!-- eslint-disable-next-line svelte/no-at-html-tags -->
+									{@html chapters[currentChapter].content}
+								</div>
 							</div>
 						</div>
 					</div>
