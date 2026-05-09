@@ -33,8 +33,8 @@
 
 	async function handleRemoveBook() {
 		await deleteBook();
-		currentBookName = 'The Picture of Dorian Gray';
-		currentBookAuthor = 'by Oscar Wilde';
+		currentBookName = 'Fifty-fifty with Bonnie';
+		currentBookAuthor = 'by W. C. Tuttle';
 		hasCustomBook = false;
 		if (fileInput) {
 			fileInput.value = '';
