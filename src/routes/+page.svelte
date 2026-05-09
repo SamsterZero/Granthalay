@@ -1,5 +1,44 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { saveBook, getBook, deleteBook } from '$lib/db';
+
+	let fileInput: HTMLInputElement;
+	let currentBookName = $state('The Picture of Dorian Gray');
+	let currentBookAuthor = $state('by Oscar Wilde');
+	let hasCustomBook = $state(false);
+
+	onMount(async () => {
+		const book = await getBook();
+		if (book) {
+			currentBookName = book.name;
+			currentBookAuthor = 'Uploaded Book';
+			hasCustomBook = true;
+		}
+	});
+
+	async function handleFileUpload(event: Event) {
+		const target = event.target as HTMLInputElement;
+		const file = target.files?.[0];
+		
+		if (file && file.name.endsWith('.epub')) {
+			const buffer = await file.arrayBuffer();
+			await saveBook(buffer, file.name);
+			currentBookName = file.name;
+			currentBookAuthor = 'Uploaded Book';
+			hasCustomBook = true;
+		}
+	}
+
+	async function handleRemoveBook() {
+		await deleteBook();
+		currentBookName = 'The Picture of Dorian Gray';
+		currentBookAuthor = 'by Oscar Wilde';
+		hasCustomBook = false;
+		if (fileInput) {
+			fileInput.value = '';
+		}
+	}
 </script>
 
 <div class="container">
@@ -11,13 +50,31 @@
 	<main class="main">
 		<div class="book-card">
 			<div class="book-info">
-				<h2>Available Book</h2>
-				<p class="book-title">The Picture of Dorian Gray</p>
-				<p class="book-author">by Oscar Wilde</p>
+				<h2>{hasCustomBook ? 'Your Library' : 'Available Book'}</h2>
+				<p class="book-title">{currentBookName}</p>
+				<p class="book-author">{currentBookAuthor}</p>
 			</div>
-			<button class="read-button" onclick={() => goto('/reader').then(() => {})}>
-				Start Reading
-			</button>
+			<div class="actions">
+				<input 
+					type="file" 
+					accept=".epub" 
+					class="hidden" 
+					style="display: none;"
+					bind:this={fileInput}
+					onchange={handleFileUpload}
+				/>
+				{#if hasCustomBook}
+					<button class="remove-button" onclick={handleRemoveBook}>
+						Remove
+					</button>
+				{/if}
+				<button class="upload-button" onclick={() => fileInput.click()}>
+					Upload EPUB
+				</button>
+				<button class="read-button" onclick={() => goto('/reader').then(() => {})}>
+					Start Reading
+				</button>
+			</div>
 		</div>
 
 		<div class="features">
@@ -105,6 +162,41 @@
 		margin: 0;
 		color: #666;
 		font-style: italic;
+	}
+
+	.actions {
+		display: flex;
+		gap: 1rem;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+
+	.upload-button, .remove-button {
+		background: white;
+		color: #007bff;
+		border: 2px solid #007bff;
+		padding: 1rem 1.5rem;
+		border-radius: 8px;
+		font-size: 1.1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition: transform 0.2s, box-shadow 0.2s;
+		white-space: nowrap;
+	}
+
+	.remove-button {
+		color: #dc3545;
+		border-color: #dc3545;
+	}
+
+	.upload-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
+	}
+
+	.remove-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 5px 15px rgba(220, 53, 69, 0.2);
 	}
 
 	.read-button {
