@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { saveBook, getBook, deleteBook } from '$lib/db';
 
@@ -71,7 +72,7 @@
 				<button class="upload-button" onclick={() => fileInput.click()}>
 					Upload EPUB
 				</button>
-				<button class="read-button" onclick={() => goto('/reader').then(() => {})}>
+				<button class="read-button" onclick={() => goto(resolve('/reader')).then(() => {})}>
 					Start Reading
 				</button>
 			</div>

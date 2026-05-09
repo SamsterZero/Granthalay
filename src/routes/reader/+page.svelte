@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { resolve, assets } from '$app/paths';
 	import sanitizeHtml from 'sanitize-html';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
@@ -31,7 +32,7 @@
 				arrayBuffer = customBook.buffer;
 			} else {
 				// Load the default EPUB file
-				const response = await fetch('/books/pg78627-images-3.epub');
+				const response = await fetch(`${assets}/books/pg78627-images-3.epub`);
 				if (!response.ok) {
 					throw new Error(`Failed to fetch EPUB: ${response.statusText}`);
 				}
@@ -313,7 +314,7 @@
 	});
 
 	function goBack() {
-		goto('/').then(() => {});
+		goto(resolve('/')).then(() => {});
 	}
 
 	function updatePagination() {
