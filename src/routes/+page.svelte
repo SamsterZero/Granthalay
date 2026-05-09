@@ -5,8 +5,8 @@
 	import { saveBook, getBook, deleteBook } from '$lib/db';
 
 	let fileInput: HTMLInputElement;
-	let currentBookName = $state('The Picture of Dorian Gray');
-	let currentBookAuthor = $state('by Oscar Wilde');
+	let currentBookName = $state('Fifty-fifty with Bonnie');
+	let currentBookAuthor = $state('by W. C. Tuttle');
 	let hasCustomBook = $state(false);
 
 	onMount(async () => {
