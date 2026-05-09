@@ -42,7 +42,7 @@
 	}
 </script>
 
-<div class="container">
+<div class="page-wrapper">
 	<header class="header">
 		<h1>📚 EPUB Reader</h1>
 		<p>Read your favorite books with Readium Web</p>
@@ -103,7 +103,7 @@
 </div>
 
 <style>
-	.container {
+	.page-wrapper {
 		min-height: 100vh;
 		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -260,7 +260,7 @@
 
 	/* Responsive design */
 	@media (max-width: 768px) {
-		.container {
+		.page-wrapper {
 			padding: 1rem;
 		}
 
