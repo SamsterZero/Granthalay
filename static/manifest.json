@@ -1,0 +1,23 @@
+{
+	"name": "EPUB Reader",
+	"short_name": "Reader",
+	"id": "/reader/",
+	"description": "Read your favorite books with Readium Web",
+	"start_url": "/reader/",
+	"scope": "/reader/",
+	"display": "standalone",
+	"background_color": "#0D5C63",
+	"theme_color": "#0D5C63",
+	"icons": [
+		{
+			"src": "icon-192.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		},
+		{
+			"src": "icon-512.png",
+			"sizes": "512x512",
+			"type": "image/png"
+		}
+	]
+}

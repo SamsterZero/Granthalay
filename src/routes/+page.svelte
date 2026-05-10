@@ -8,6 +8,8 @@
 	let currentBookName = $state('Fifty-fifty with Bonnie');
 	let currentBookAuthor = $state('by W. C. Tuttle');
 	let hasCustomBook = $state(false);
+	let installPrompt: any = $state(null);
+	let showInstall = $state(false);
 
 	onMount(async () => {
 		const book = await getBook();
@@ -16,12 +18,18 @@
 			currentBookAuthor = 'Uploaded Book';
 			hasCustomBook = true;
 		}
+
+		window.addEventListener('beforeinstallprompt', (e) => {
+			e.preventDefault();
+			installPrompt = e;
+			showInstall = true;
+		});
 	});
 
 	async function handleFileUpload(event: Event) {
 		const target = event.target as HTMLInputElement;
 		const file = target.files?.[0];
-		
+
 		if (file && file.name.endsWith('.epub')) {
 			const buffer = await file.arrayBuffer();
 			await saveBook(buffer, file.name);
@@ -40,6 +48,16 @@
 			fileInput.value = '';
 		}
 	}
+
+	async function handleInstall() {
+		if (!installPrompt) return;
+		installPrompt.prompt();
+		const { outcome } = await installPrompt.userChoice;
+		if (outcome === 'accepted') {
+			showInstall = false;
+			installPrompt = null;
+		}
+	}
 </script>
 
 <div class="page-wrapper">
@@ -56,22 +74,21 @@
 				<p class="book-author">{currentBookAuthor}</p>
 			</div>
 			<div class="actions">
-				<input 
-					type="file" 
-					accept=".epub" 
-					class="hidden" 
+				<input
+					type="file"
+					accept=".epub"
+					class="hidden"
 					style="display: none;"
 					bind:this={fileInput}
 					onchange={handleFileUpload}
 				/>
 				{#if hasCustomBook}
-					<button class="remove-button" onclick={handleRemoveBook}>
-						Remove
-					</button>
+					<button class="remove-button" onclick={handleRemoveBook}> Remove </button>
 				{/if}
-				<button class="upload-button" onclick={() => fileInput.click()}>
-					Upload EPUB
-				</button>
+				{#if showInstall}
+					<button class="install-button" onclick={handleInstall}>Install App</button>
+				{/if}
+				<button class="upload-button" onclick={() => fileInput.click()}> Upload EPUB </button>
 				<button class="read-button" onclick={() => goto(resolve('/reader')).then(() => {})}>
 					Start Reading
 				</button>
@@ -172,7 +189,8 @@
 		flex-wrap: wrap;
 	}
 
-	.upload-button, .remove-button {
+	.upload-button,
+	.remove-button {
 		background: white;
 		color: #007bff;
 		border: 2px solid #007bff;
@@ -181,7 +199,9 @@
 		font-size: 1.1rem;
 		font-weight: 600;
 		cursor: pointer;
-		transition: transform 0.2s, box-shadow 0.2s;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
 		white-space: nowrap;
 	}
 
@@ -218,6 +238,26 @@
 	.read-button:hover {
 		transform: translateY(-2px);
 		box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+	}
+
+	.install-button {
+		background: linear-gradient(135deg, #0D5C63, #094a50);
+		color: white;
+		border: none;
+		padding: 1rem 1.5rem;
+		border-radius: 8px;
+		font-size: 1.1rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
+		white-space: nowrap;
+	}
+
+	.install-button:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 5px 15px rgba(13, 92, 99, 0.4);
 	}
 
 	.features {
