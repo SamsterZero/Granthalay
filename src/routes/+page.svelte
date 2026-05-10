@@ -2,26 +2,49 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { saveBook, getBook, deleteBook } from '$lib/db';
+	import { saveBook, getAllBooks, deleteBookById, type BookRecord } from '$lib/db';
+	import { extractEpubMeta } from '$lib/epub-meta';
+	import { Moon, Sun } from 'lucide-svelte';
+
+	interface BeforeInstallPromptEvent extends Event {
+		prompt: () => void;
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+	}
 
 	let fileInput: HTMLInputElement;
-	let currentBookName = $state('Fifty-fifty with Bonnie');
-	let currentBookAuthor = $state('by W. C. Tuttle');
-	let hasCustomBook = $state(false);
-	let installPrompt: any = $state(null);
+	let books = $state<BookRecord[]>([]);
+	let defaultBook = $state<{ title: string; cover: string | null } | null>(null);
+	let loading = $state(true);
+	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
 	let showInstall = $state(false);
+	let darkMode = $state(false);
 
 	onMount(async () => {
-		const book = await getBook();
-		if (book) {
-			currentBookName = book.name;
-			currentBookAuthor = 'Uploaded Book';
-			hasCustomBook = true;
+		const savedTheme = localStorage.getItem('theme');
+		if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+			darkMode = true;
+			document.documentElement.classList.add('dark');
 		}
+
+		books = await getAllBooks();
+
+		try {
+			const response = await fetch(`/books/pg78627-images-3.epub`);
+			if (response.ok) {
+				const buffer = await response.arrayBuffer();
+				const meta = await extractEpubMeta(buffer);
+				defaultBook = meta;
+			}
+		} catch (e) {
+			console.error('Failed to load default book metadata:', e);
+			defaultBook = { title: 'Fifty-fifty with Bonnie', cover: null };
+		}
+
+		loading = false;
 
 		window.addEventListener('beforeinstallprompt', (e) => {
 			e.preventDefault();
-			installPrompt = e;
+			installPrompt = e as BeforeInstallPromptEvent;
 			showInstall = true;
 		});
 	});
@@ -32,21 +55,20 @@
 
 		if (file && file.name.endsWith('.epub')) {
 			const buffer = await file.arrayBuffer();
-			await saveBook(buffer, file.name);
-			currentBookName = file.name;
-			currentBookAuthor = 'Uploaded Book';
-			hasCustomBook = true;
+			const meta = await extractEpubMeta(buffer);
+			await saveBook(buffer, file.name, meta.title, meta.cover);
+			books = await getAllBooks();
+			if (fileInput) fileInput.value = '';
 		}
 	}
 
-	async function handleRemoveBook() {
-		await deleteBook();
-		currentBookName = 'Fifty-fifty with Bonnie';
-		currentBookAuthor = 'by W. C. Tuttle';
-		hasCustomBook = false;
-		if (fileInput) {
-			fileInput.value = '';
-		}
+	async function handleDeleteBook(id: string) {
+		await deleteBookById(id);
+		books = await getAllBooks();
+	}
+
+	function openBook(id: string) {
+		goto(`${resolve('/reader')}?bookId=${id}`);
 	}
 
 	async function handleInstall() {
@@ -58,201 +80,168 @@
 			installPrompt = null;
 		}
 	}
+
+	function toggleDarkMode() {
+		darkMode = !darkMode;
+		if (darkMode) {
+			document.documentElement.classList.add('dark');
+			localStorage.setItem('theme', 'dark');
+		} else {
+			document.documentElement.classList.remove('dark');
+			localStorage.setItem('theme', 'light');
+		}
+	}
+
+	function getInitials(title: string): string {
+		return title.charAt(0).toUpperCase();
+	}
 </script>
 
 <div class="page-wrapper">
 	<header class="header">
-		<h1>📚 EPUB Reader</h1>
-		<p>Read your favorite books with Readium Web</p>
+		<h1>📚 My Library</h1>
+		<div class="header-actions">
+			<button class="theme-toggle" onclick={toggleDarkMode} title="Toggle theme">
+				{#if darkMode}
+					<Sun size={20} />
+				{:else}
+					<Moon size={20} />
+				{/if}
+			</button>
+			{#if showInstall}
+				<button class="install-button" onclick={handleInstall}>Install App</button>
+			{/if}
+			<input
+				type="file"
+				accept=".epub"
+				class="hidden"
+				style="display: none;"
+				bind:this={fileInput}
+				onchange={handleFileUpload}
+			/>
+			<button class="upload-fab" onclick={() => fileInput.click()} title="Upload EPUB">+</button>
+		</div>
 	</header>
 
-	<main class="main">
-		<div class="book-card">
-			<div class="book-info">
-				<h2>{hasCustomBook ? 'Your Library' : 'Available Book'}</h2>
-				<p class="book-title">{currentBookName}</p>
-				<p class="book-author">{currentBookAuthor}</p>
+	<main class="library-main">
+		{#if loading}
+			<div class="loading">
+				<div class="spinner"></div>
+				<p>Loading library...</p>
 			</div>
-			<div class="actions">
-				<input
-					type="file"
-					accept=".epub"
-					class="hidden"
-					style="display: none;"
-					bind:this={fileInput}
-					onchange={handleFileUpload}
-				/>
-				{#if hasCustomBook}
-					<button class="remove-button" onclick={handleRemoveBook}> Remove </button>
+		{:else}
+			<div class="library-grid">
+				<!-- Default Book -->
+				{#if defaultBook}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<div class="library-card" onclick={() => openBook('default')} role="button" tabindex="0">
+						{#if defaultBook.cover}
+							<div class="card-bg" style="background-image: url({defaultBook.cover})"></div>
+						{:else}
+							<div class="card-bg card-bg-placeholder">
+								<span>{getInitials(defaultBook.title)}</span>
+							</div>
+						{/if}
+						<div class="card-overlay">
+							<h3 class="card-title">{defaultBook.title}</h3>
+						</div>
+					</div>
 				{/if}
-				{#if showInstall}
-					<button class="install-button" onclick={handleInstall}>Install App</button>
-				{/if}
-				<button class="upload-button" onclick={() => fileInput.click()}> Upload EPUB </button>
-				<button class="read-button" onclick={() => goto(resolve('/reader')).then(() => {})}>
-					Start Reading
-				</button>
-			</div>
-		</div>
 
-		<div class="features">
-			<h3>Features</h3>
-			<div class="feature-grid">
-				<div class="feature">
-					<h4>📖 Responsive Reading</h4>
-					<p>Optimized for desktop and mobile devices</p>
-				</div>
-				<div class="feature">
-					<h4>⌨️ Keyboard Navigation</h4>
-					<p>Use arrow keys or space to navigate pages</p>
-				</div>
-				<div class="feature">
-					<h4>🎨 Clean Interface</h4>
-					<p>Minimal design focused on reading experience</p>
-				</div>
-				<div class="feature">
-					<h4>📱 Touch Friendly</h4>
-					<p>Works great on tablets and phones</p>
-				</div>
+				<!-- Uploaded Books -->
+				{#each books as book (book.id)}
+					<!-- svelte-ignore a11y_click_events_have_key_events -->
+					<div class="library-card" onclick={() => openBook(book.id)} role="button" tabindex="0">
+						{#if book.cover}
+							<div class="card-bg" style="background-image: url({book.cover})"></div>
+						{:else}
+							<div class="card-bg card-bg-placeholder">
+								<span>{getInitials(book.title)}</span>
+							</div>
+						{/if}
+						<div class="card-overlay">
+							<h3 class="card-title">{book.title}</h3>
+						</div>
+						<button
+							class="delete-btn"
+							onclick={(e) => { e.stopPropagation(); handleDeleteBook(book.id); }}
+							title="Remove book"
+						>
+							×
+						</button>
+					</div>
+				{/each}
 			</div>
-		</div>
+
+			{#if books.length === 0}
+				<div class="empty-state">
+					<p>Your library is empty. Upload an EPUB to get started!</p>
+				</div>
+			{/if}
+		{/if}
 	</main>
 </div>
 
 <style>
 	.page-wrapper {
 		min-height: 100vh;
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+		background: var(--background);
+		color: var(--foreground);
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		padding: 2rem;
+		transition: background 0.3s, color 0.3s;
 	}
 
 	.header {
-		text-align: center;
-		color: white;
-		margin-bottom: 3rem;
-	}
-
-	.header h1 {
-		font-size: 3rem;
-		margin: 0;
-		font-weight: 700;
-		text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-	}
-
-	.header p {
-		font-size: 1.2rem;
-		margin: 0.5rem 0 0 0;
-		opacity: 0.9;
-	}
-
-	.main {
-		max-width: 800px;
-		margin: 0 auto;
-	}
-
-	.book-card {
-		background: white;
-		border-radius: 12px;
-		padding: 2rem;
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-		margin-bottom: 3rem;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 2rem;
+		max-width: 1200px;
+		margin: 0 auto 2rem auto;
+		color: var(--foreground);
 	}
 
-	.book-info h2 {
-		margin: 0 0 1rem 0;
-		color: #333;
-		font-size: 1.5rem;
-	}
-
-	.book-title {
-		margin: 0 0 0.5rem 0;
-		color: #007bff;
-		font-size: 1.3rem;
-		font-weight: 600;
-	}
-
-	.book-author {
+	.header h1 {
+		font-size: 2.2rem;
 		margin: 0;
-		color: #666;
-		font-style: italic;
+		font-weight: 700;
 	}
 
-	.actions {
+	.header-actions {
 		display: flex;
-		gap: 1rem;
+		gap: 0.75rem;
 		align-items: center;
-		flex-wrap: wrap;
 	}
 
-	.upload-button,
-	.remove-button {
-		background: white;
-		color: #007bff;
-		border: 2px solid #007bff;
-		padding: 1rem 1.5rem;
-		border-radius: 8px;
-		font-size: 1.1rem;
-		font-weight: 600;
+	.theme-toggle {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background: var(--secondary);
+		color: var(--secondary-foreground);
+		border: 1px solid var(--border);
 		cursor: pointer;
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		white-space: nowrap;
+		transition: transform 0.2s, box-shadow 0.2s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 	}
 
-	.remove-button {
-		color: #dc3545;
-		border-color: #dc3545;
-	}
-
-	.upload-button:hover {
+	.theme-toggle:hover {
 		transform: translateY(-2px);
-		box-shadow: 0 5px 15px rgba(0, 123, 255, 0.2);
-	}
-
-	.remove-button:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 5px 15px rgba(220, 53, 69, 0.2);
-	}
-
-	.read-button {
-		background: linear-gradient(135deg, #007bff, #0056b3);
-		color: white;
-		border: none;
-		padding: 1rem 2rem;
-		border-radius: 8px;
-		font-size: 1.1rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		white-space: nowrap;
-	}
-
-	.read-button:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 	}
 
 	.install-button {
 		background: linear-gradient(135deg, #0D5C63, #094a50);
 		color: white;
 		border: none;
-		padding: 1rem 1.5rem;
+		padding: 0.6rem 1.2rem;
 		border-radius: 8px;
-		font-size: 1.1rem;
+		font-size: 0.95rem;
 		font-weight: 600;
 		cursor: pointer;
-		transition:
-			transform 0.2s,
-			box-shadow 0.2s;
-		white-space: nowrap;
+		transition: transform 0.2s, box-shadow 0.2s;
 	}
 
 	.install-button:hover {
@@ -260,70 +249,183 @@
 		box-shadow: 0 5px 15px rgba(13, 92, 99, 0.4);
 	}
 
-	.features {
-		background: white;
-		border-radius: 12px;
-		padding: 2rem;
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+	.upload-fab {
+		width: 48px;
+		height: 48px;
+		border-radius: 50%;
+		background: linear-gradient(135deg, #007bff, #0056b3);
+		color: white;
+		border: none;
+		font-size: 1.8rem;
+		font-weight: 300;
+		cursor: pointer;
+		transition: transform 0.2s, box-shadow 0.2s;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		line-height: 1;
+		padding-bottom: 4px;
 	}
 
-	.features h3 {
-		margin: 0 0 1.5rem 0;
-		color: #333;
-		text-align: center;
-		font-size: 1.5rem;
+	.upload-fab:hover {
+		transform: translateY(-2px) scale(1.05);
+		box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
 	}
 
-	.feature-grid {
+	.library-main {
+		max-width: 1200px;
+		margin: 0 auto;
+	}
+
+	.loading {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		padding: 4rem;
+		color: var(--foreground);
+		gap: 1rem;
+	}
+
+	.spinner {
+		width: 40px;
+		height: 40px;
+		border: 3px solid var(--border);
+		border-top-color: var(--foreground);
+		border-radius: 50%;
+		animation: spin 0.8s linear infinite;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	.library-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+		grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
 		gap: 1.5rem;
 	}
 
-	.feature {
-		text-align: center;
-		padding: 1rem;
+	.library-card {
+		aspect-ratio: 2 / 3;
+		border-radius: 12px;
+		overflow: hidden;
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+		cursor: pointer;
+		transition: transform 0.2s, box-shadow 0.2s;
+		position: relative;
 	}
 
-	.feature h4 {
-		margin: 0 0 0.5rem 0;
-		color: #333;
-		font-size: 1.1rem;
+	.library-card:hover {
+		transform: translateY(-4px);
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 	}
 
-	.feature p {
+	.library-card:focus {
+		outline: 2px solid #007bff;
+		outline-offset: 2px;
+	}
+
+	.card-bg {
+		position: absolute;
+		inset: 0;
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+	}
+
+	.card-bg-placeholder {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: linear-gradient(135deg, #0D5C63, #094a50);
+		color: white;
+		font-size: 3rem;
+		font-weight: 700;
+	}
+
+	.card-overlay {
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		padding: 2rem 0.75rem 0.75rem 0.75rem;
+		background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
+	}
+
+	.card-title {
 		margin: 0;
-		color: #666;
 		font-size: 0.9rem;
-		line-height: 1.4;
+		font-weight: 600;
+		color: white;
+		line-height: 1.3;
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 	}
 
-	/* Responsive design */
+	.delete-btn {
+		position: absolute;
+		top: 6px;
+		right: 6px;
+		width: 28px;
+		height: 28px;
+		border-radius: 50%;
+		background: rgba(220, 53, 69, 0.9);
+		color: white;
+		border: none;
+		font-size: 1.2rem;
+		font-weight: 700;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		line-height: 1;
+		padding-bottom: 2px;
+		opacity: 0;
+		transition: opacity 0.2s, transform 0.2s;
+		z-index: 2;
+	}
+
+	.library-card:hover .delete-btn {
+		opacity: 1;
+	}
+
+	.delete-btn:hover {
+		transform: scale(1.1);
+		background: rgba(220, 53, 69, 1);
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: 4rem;
+		color: var(--foreground);
+		font-size: 1.1rem;
+		opacity: 0.9;
+	}
+
+	/* Responsive */
 	@media (max-width: 768px) {
 		.page-wrapper {
 			padding: 1rem;
 		}
 
 		.header h1 {
-			font-size: 2rem;
+			font-size: 1.6rem;
 		}
 
-		.header p {
-			font-size: 1rem;
-		}
-
-		.book-card {
-			flex-direction: column;
-			text-align: center;
+		.library-grid {
+			grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
 			gap: 1rem;
 		}
 
-		.read-button {
-			width: 100%;
-		}
-
-		.feature-grid {
-			grid-template-columns: 1fr;
+		.delete-btn {
+			opacity: 1;
 		}
 	}
 </style>

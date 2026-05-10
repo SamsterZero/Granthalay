@@ -7,7 +7,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ChevronLeft } from 'lucide-svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
-	import { getBook } from '$lib/db';
+	import { getBookById } from '$lib/db';
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -17,26 +17,30 @@
 	let chapterCSS = $state('');
 	let currentPage = $state(0);
 	let totalPages = $state(0);
-	
+
 	let contentContainer = $state<HTMLElement | null>(null);
 	let containerWidth = $state(0);
 	let jumpToLastPage = $state(false);
 
 	onMount(async () => {
 		try {
-			// Check for locally uploaded book first
-			const customBook = await getBook();
+			const params = new URLSearchParams(window.location.search);
+			const bookId = params.get('bookId') || 'default';
+
 			let arrayBuffer: ArrayBuffer;
-			
-			if (customBook) {
-				arrayBuffer = customBook.buffer;
-			} else {
-				// Load the default EPUB file
+
+			if (bookId === 'default') {
 				const response = await fetch(`${assets}/books/pg78627-images-3.epub`);
 				if (!response.ok) {
 					throw new Error(`Failed to fetch EPUB: ${response.statusText}`);
 				}
 				arrayBuffer = await response.arrayBuffer();
+			} else {
+				const book = await getBookById(bookId);
+				if (!book) {
+					throw new Error('Book not found in library');
+				}
+				arrayBuffer = book.buffer;
 			}
 
 			const zip = await import('jszip');
