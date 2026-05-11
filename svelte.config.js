@@ -9,10 +9,17 @@ const config = {
 	kit: {
 		adapter: adapter({
 			fallback: '404.html',
-			strict: false
+			strict: false,
+			pages: 'build',
+			assets: 'build'
 		}),
 		paths: {
-			base: process.argv.includes('dev') ? '' : '/reader'
+			// For GitHub Pages, use the repository name as base path
+			base: process.argv.includes('dev') ? '' : process.env.NODE_ENV === 'production' ? '/reader' : ''
+		},
+		prerender: {
+			handleUnseenRoutes: 'ignore',
+			entries: ['*']
 		}
 	}
 };
