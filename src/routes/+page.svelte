@@ -130,7 +130,7 @@
 				<p>Loading library...</p>
 			</div>
 		{:else}
-			<div class="library-grid">
+			<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-4">
 				<!-- Default Book -->
 				{#if defaultBook}
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -302,11 +302,11 @@
 		}
 	}
 
-	.library-grid {
+	/* .library-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
 		gap: 1.5rem;
-	}
+	} */
 
 	.library-card {
 		aspect-ratio: 2 / 3;
