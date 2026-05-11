@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
@@ -59,6 +60,14 @@
 			installPrompt = e as BeforeInstallPromptEvent;
 			showInstall = true;
 		});
+		
+		if (!browser) return;
+
+		const saved = localStorage.getItem("library-grid-mode");
+
+		if (saved === "compact" || saved === "comfortable") {
+			gridMode = saved;
+		}
 	});
 
 	async function handleFileUpload(event: Event) {
@@ -107,6 +116,9 @@
 	function setGridMode(mode: GridMode) {
 		if (gridMode === mode) return; // prevents repeated shrinking/growing
 		gridMode = mode;
+		if (browser) {
+			localStorage.setItem("library-grid-mode", mode);
+		}
 	}
 
 	function getInitials(title: string): string {
