@@ -19,7 +19,7 @@
 
 	let fileInput: HTMLInputElement;
 	let books = $state<BookRecord[]>([]);
-	let defaultBook = $state<{ title: string; cover: string | null } | null>(null);
+	let defaultBook = $state<{ title: string; cover: string | null; progress?: number; totalBookPages?: number } | null>(null);
 	let loading = $state(true);
 	let darkMode = $state(false);
 	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
@@ -54,7 +54,23 @@
 			if (response.ok) {
 				const buffer = await response.arrayBuffer();
 				const meta = await extractEpubMeta(buffer);
-				defaultBook = meta;
+				const stored = localStorage.getItem('book-progress-default');
+				let progress = 0;
+				let totalBookPages = 0;
+				if (stored) {
+					try {
+						const parsed = JSON.parse(stored);
+						if (typeof parsed === 'object') {
+							progress = parsed.progress || 0;
+							totalBookPages = parsed.totalBookPages || 0;
+						} else {
+							progress = Number(stored);
+						}
+					} catch {
+						progress = Number(stored);
+					}
+				}
+				defaultBook = { ...meta, progress, totalBookPages };
 			}
 		} catch (e) {
 			console.error('Failed to load default book metadata:', e);
@@ -203,6 +219,11 @@
 						class="relative rounded-xl overflow-hidden shadow-md cursor-pointer transition hover:-translate-y-1 hover:shadow-xl" 
 						onclick={() => openBook('default')}
 					>
+						{#if defaultBook.progress && defaultBook.progress > 0}
+							<div class="absolute top-2 left-2 z-20 bg-[#0D5C63] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md border border-white/20">
+								{Math.round(defaultBook.progress * 100)}%
+							</div>
+						{/if}
 						{#if defaultBook.cover}
 							<div
 								class="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -231,6 +252,11 @@
 							onclick={() => openBook(book.id)}
 							role="button"
 						>
+							{#if book.progress && book.progress > 0}
+								<div class="absolute top-2 left-2 z-20 bg-[#0D5C63] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md border border-white/20">
+									{Math.round(book.progress * 100)}%
+								</div>
+							{/if}
 							{#if book.cover}
 								<div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url({book.cover})"></div>
 							{:else}

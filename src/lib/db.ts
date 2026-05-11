@@ -9,6 +9,10 @@ export interface BookRecord {
 	cover: string | null;
 	buffer: ArrayBuffer;
 	createdAt: number;
+	progress?: number; // 0 to 1
+	currentChapter?: number;
+	currentPage?: number;
+	totalBookPages?: number;
 }
 
 function getDB(): Promise<IDBDatabase> {
@@ -144,6 +148,42 @@ export async function deleteBookById(id: string): Promise<void> {
 		const request = store.delete(id);
 		request.onsuccess = () => resolve();
 		request.onerror = () => reject(request.error);
+	});
+}
+
+export async function updateBookProgress(
+	id: string, 
+	progress: number, 
+	currentChapter?: number, 
+	currentPage?: number,
+	totalBookPages?: number
+): Promise<void> {
+	if (id === 'default') {
+		localStorage.setItem('book-progress-default', JSON.stringify({ progress, currentChapter, currentPage, totalBookPages }));
+		return;
+	}
+
+	const db = await getDB();
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction(STORE_NAME, 'readwrite');
+		const store = transaction.objectStore(STORE_NAME);
+		const getRequest = store.get(id);
+
+		getRequest.onsuccess = () => {
+			const record = getRequest.result as BookRecord;
+			if (record) {
+				record.progress = progress;
+				if (currentChapter !== undefined) record.currentChapter = currentChapter;
+				if (currentPage !== undefined) record.currentPage = currentPage;
+				if (totalBookPages !== undefined) record.totalBookPages = totalBookPages;
+				const putRequest = store.put(record, id);
+				putRequest.onsuccess = () => resolve();
+				putRequest.onerror = () => reject(putRequest.error);
+			} else {
+				resolve();
+			}
+		};
+		getRequest.onerror = () => reject(getRequest.error);
 	});
 }
 

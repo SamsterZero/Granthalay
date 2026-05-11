@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { getBookById } from '$lib/db';
+	import { getBookById, type BookRecord } from '$lib/db';
 	import { extractEpubDetail } from '$lib/epub-meta';
 	import { Play } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -18,6 +18,8 @@
 	let description = $state('');
 	let cover = $state<string | null>(null);
 	let chapters = $state<Array<{ id: string; title: string; href: string; isFrontmatter?: boolean }>>([]);
+	let currentChapterIndex = $state<number | null>(null);
+	let currentPageIndex = $state<number | null>(null);
 
 	onMount(async () => {
 		try {
@@ -43,6 +45,25 @@
 
 			const detail = await extractEpubDetail(arrayBuffer);
 
+			let storedRecord: Partial<BookRecord> | null = null;
+			if (bookId === 'default') {
+				const stored = localStorage.getItem('book-progress-default');
+				if (stored) {
+					try {
+						storedRecord = JSON.parse(stored);
+					} catch {
+						storedRecord = { progress: Number(stored) };
+					}
+				}
+			} else if (bookId !== 'test-user-book') {
+				storedRecord = await getBookById(bookId);
+			}
+
+			if (storedRecord) {
+				currentChapterIndex = storedRecord.currentChapter ?? null;
+				currentPageIndex = storedRecord.currentPage ?? null;
+			}
+
 			title = storedTitle || detail.title;
 			author = detail.author;
 			description = detail.description;
@@ -62,9 +83,16 @@
 	function startReading(chapterIndex?: number) {
 		const url = new URL(`${resolve('/reader')}`, window.location.origin);
 		url.searchParams.set('bookId', bookId);
+		
 		if (chapterIndex !== undefined) {
 			url.searchParams.set('chapter', chapterIndex.toString());
+		} else if (currentChapterIndex !== null) {
+			url.searchParams.set('chapter', currentChapterIndex.toString());
+			if (currentPageIndex !== null) {
+				url.searchParams.set('page', currentPageIndex.toString());
+			}
 		}
+		
 		goto(url.pathname + url.search);
 	}
 
@@ -136,16 +164,31 @@
 				<div class="space-y-2">
 					{#each chapters.filter(c => !c.isFrontmatter) as chapter, index (chapter.id)}
 						<button
-							class="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-accent transition-colors text-left"
+							class={`w-full flex items-center gap-4 p-4 rounded-lg border transition-all text-left ${
+								chapters.indexOf(chapter) < (currentChapterIndex ?? -1) 
+									? 'opacity-50 grayscale bg-muted/30' 
+									: chapters.indexOf(chapter) === currentChapterIndex
+										? 'border-[#0D5C63] bg-[#0D5C63]/5 ring-1 ring-[#0D5C63]/20'
+										: 'hover:bg-accent'
+							}`}
 							onclick={() => startReading(chapters.indexOf(chapter))}
 						>
-							<span class="text-muted-foreground text-sm w-8">
+							<span class={`text-sm w-8 ${chapters.indexOf(chapter) === currentChapterIndex ? 'text-[#0D5C63] font-bold' : 'text-muted-foreground'}`}>
 								{index + 1}
 							</span>
 							<div class="flex-1 min-w-0">
-								<p class="font-medium truncate">{chapter.title}</p>
+								<p class={`font-medium truncate ${chapters.indexOf(chapter) === currentChapterIndex ? 'text-[#0D5C63]' : ''}`}>
+									{chapter.title}
+								</p>
+								{#if chapters.indexOf(chapter) === currentChapterIndex && currentPageIndex !== null}
+									<p class="text-[10px] text-[#0D5C63]/70 font-medium mt-0.5">Currently at Page {currentPageIndex + 1}</p>
+								{:else}
+									<p class="text-[10px] text-muted-foreground mt-0.5">
+										{chapters.indexOf(chapter) < (currentChapterIndex ?? -1) ? 'Completed' : 'Not started'}
+									</p>
+								{/if}
 							</div>
-							<Play class="w-4 h-4 text-muted-foreground" />
+							<Play class={`w-4 h-4 ${chapters.indexOf(chapter) === currentChapterIndex ? 'text-[#0D5C63]' : 'text-muted-foreground'}`} />
 						</button>
 					{:else}
 						<p class="text-muted-foreground text-center py-8">No chapters found</p>
