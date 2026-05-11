@@ -5,7 +5,7 @@
 	import sanitizeHtml from 'sanitize-html';
 	import { SvelteMap } from 'svelte/reactivity';
 	import { Button } from '$lib/components/ui/button';
-	import { ChevronLeft } from 'lucide-svelte';
+	import { ChevronLeft, Moon, Sun } from 'lucide-svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { getBookById } from '$lib/db';
 
@@ -17,12 +17,20 @@
 	let chapterCSS = $state('');
 	let currentPage = $state(0);
 	let totalPages = $state(0);
+	let darkMode = $state(false);
 
 	let contentContainer = $state<HTMLElement | null>(null);
 	let containerWidth = $state(0);
 	let jumpToLastPage = $state(false);
 
 	onMount(async () => {
+		// Initialize theme
+		const savedTheme = localStorage.getItem('theme');
+		if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+			darkMode = true;
+			document.documentElement.classList.add('dark');
+		}
+
 		try {
 			const params = new URLSearchParams(window.location.search);
 			const bookId = params.get('bookId') || 'default';
@@ -321,6 +329,17 @@
 		goto(resolve('/')).then(() => {});
 	}
 
+	function toggleDarkMode() {
+		darkMode = !darkMode;
+		if (darkMode) {
+			document.documentElement.classList.add('dark');
+			localStorage.setItem('theme', 'dark');
+		} else {
+			document.documentElement.classList.remove('dark');
+			localStorage.setItem('theme', 'light');
+		}
+	}
+
 	function updatePagination() {
 		if (currentChapter === 0 && chapters[0]?.title === '"Cover"') {
 			totalPages = 1;
@@ -537,10 +556,10 @@
 	<div id="epub-css-container" style="display: none;"></div>
 {/if}
 
-<div class="flex h-screen flex-col bg-gray-50 font-sans">
+<div class="flex h-screen flex-col bg-background font-sans">
 	<!-- Header -->
 	<header
-		class="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4 shadow-sm"
+		class="flex items-center justify-between border-b border-border bg-background px-6 py-4 shadow-sm"
 	>
 		<Button variant="ghost" onclick={goBack} class="flex items-center gap-2">
 			<ChevronLeft class="h-4 w-4" />
@@ -548,13 +567,25 @@
 		</Button>
 
 		<div class="max-w-xs text-left sm:text-center">
-			<h1 class="truncate text-xl font-semibold text-gray-900">{bookTitle}</h1>
+			<h1 class="truncate text-xl font-semibold text-foreground">{bookTitle}</h1>
 			{#if chapters[currentChapter]}
-				<p class="truncate text-sm text-gray-600">{chapters[currentChapter]?.title}</p>
+				<p class="truncate text-sm text-muted-foreground">{chapters[currentChapter]?.title}</p>
 			{/if}
 		</div>
 
-		<div class="w-[72px]"></div>
+		<Button 
+			variant="outline"
+			size="icon"
+			class="rounded-full cursor-pointer"
+			onclick={toggleDarkMode}
+			title="Toggle theme"
+		>
+			{#if darkMode}
+				<Sun size={20} />
+			{:else}
+				<Moon size={20} />
+			{/if}
+		</Button>
 	</header>
 
 	<!-- Main Content -->
@@ -562,7 +593,7 @@
 		{#if loading}
 			<div class="flex h-full flex-col items-center justify-center p-8">
 				<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-				<p class="text-lg text-gray-600">Loading EPUB...</p>
+				<p class="text-lg text-muted-foreground">Loading EPUB...</p>
 			</div>
 		{:else if error}
 			<div class="flex h-full items-center justify-center p-8">
@@ -576,14 +607,14 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div 
-				class="h-full bg-gray-50 overflow-hidden"
+				class="h-full bg-background overflow-hidden"
 				ontouchstart={handleTouchStart}
 				ontouchend={handleTouchEnd}
 				onclick={handleContentClick}
 			>
 				{#if currentChapter === 0 && chapters[0]?.title === '"Cover"'}
 					<!-- Cover page - fullscreen -->
-					<div class="h-full w-full bg-white">
+					<div class="h-full w-full bg-background">
 						<div class="prose prose-lg max-w-none h-full w-full p-0 m-0">
 							<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 							{@html chapters[currentChapter].content}
@@ -592,7 +623,7 @@
 				{:else}
 					<!-- Regular chapters - multi-column paginated -->
 					<div class="h-full w-full flex justify-center">
-						<div class="h-full w-full max-w-3xl overflow-hidden bg-white px-8 py-8 shadow-sm border-x border-gray-200" bind:clientWidth={containerWidth}>
+						<div class="h-full w-full max-w-3xl overflow-hidden bg-background px-8 py-8 shadow-sm border-x border-border" bind:clientWidth={containerWidth}>
 							<div class="h-full w-full" style="transform: translateX(-{currentPage * containerWidth}px); transition: transform 0.3s ease-in-out;">
 								<div 
 									bind:this={contentContainer}
@@ -611,8 +642,8 @@
 	</main>
 
 	<!-- Footer -->
-	<footer class="border-t border-gray-200 bg-white px-6 py-3 text-center">
-		<p class="text-sm text-gray-600">
+	<footer class="border-t border-border bg-background px-6 py-3 text-center">
+		<p class="text-sm text-muted-foreground">
 			Page {currentPage + 1} / {totalPages}
 		</p>
 	</footer>
@@ -637,7 +668,7 @@
 		justify-content: center;
 		padding: 0 !important;
 		margin: 0 !important;
-		background: white;
+		background: hsl(var(--background));
 	}
 	
 	:global(.prose .x-ebookmaker-cover) {
@@ -717,13 +748,30 @@
 	:global(.prose p) {
 		margin-bottom: 1rem;
 		text-align: justify;
+		color: hsl(var(--foreground));
+	}
+
+	/* Dark theme support for EPUB content */
+	:global(.prose) {
+		color: hsl(var(--foreground));
+	}
+
+	:global(.prose div),
+	:global(.prose span),
+	:global(.prose strong),
+	:global(.prose em),
+	:global(.prose blockquote),
+	:global(.prose ul),
+	:global(.prose ol),
+	:global(.prose li) {
+		color: hsl(var(--foreground));
 	}
 	
 	:global(.prose h1),
 	:global(.prose h2),
 	:global(.prose h3) {
 		margin: 1.5rem 0 1rem 0;
-		color: rgb(17, 24, 39);
+		color: hsl(var(--foreground));
 		break-after: avoid;
 		page-break-after: avoid;
 	}

@@ -5,9 +5,10 @@
 	import { onMount } from 'svelte';
 	import { saveBook, getAllBooks, deleteBookById, type BookRecord } from '$lib/db';
 	import { extractEpubMeta } from '$lib/epub-meta';
-	import { Moon, Sun, Grid2x2, Grid3x3 } from 'lucide-svelte';
-	import { ButtonGroup } from '$lib/components/ui/button-group';
+	import { Moon, Sun, Grid2x2, Grid3x3, Download, Plus } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { ButtonGroup } from '$lib/components/ui/button-group';
+	import { AspectRatio } from '$lib/components/ui/aspect-ratio';
 
 	interface BeforeInstallPromptEvent extends Event {
 		prompt: () => void;
@@ -16,14 +17,13 @@
 
 	type GridMode = 'compact' | 'comfortable';
 
-
 	let fileInput: HTMLInputElement;
 	let books = $state<BookRecord[]>([]);
 	let defaultBook = $state<{ title: string; cover: string | null } | null>(null);
 	let loading = $state(true);
+	let darkMode = $state(false);
 	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
 	let showInstall = $state(false);
-	let darkMode = $state(false);
 
 	function getInitialGridMode(): GridMode {
 		if (!browser) return "compact";
@@ -73,14 +73,12 @@
 	async function handleFileUpload(event: Event) {
 		const target = event.target as HTMLInputElement;
 		const file = target.files?.[0];
-
-		if (file && file.name.endsWith('.epub')) {
-			const buffer = await file.arrayBuffer();
-			const meta = await extractEpubMeta(buffer);
-			await saveBook(buffer, file.name, meta.title, meta.cover);
-			books = await getAllBooks();
-			if (fileInput) fileInput.value = '';
-		}
+		if (!file || !file.name.endsWith('.epub')) return;
+		const buffer = await file.arrayBuffer();
+		const meta = await extractEpubMeta(buffer);
+		await saveBook(buffer, file.name, meta.title, meta.cover);
+		books = await getAllBooks();
+		if (fileInput) fileInput.value = '';
 	}
 
 	async function handleDeleteBook(id: string) {
@@ -89,7 +87,7 @@
 	}
 
 	function openBook(id: string) {
-		goto(`${resolve('/reader')}?bookId=${id}`);
+		goto(`${resolve('/book')}/${id}`);
 	}
 
 	async function handleInstall() {
@@ -126,21 +124,32 @@
 	}
 </script>
 
-<div class="page-wrapper">
-	<header class="header">
-		<div class="w-8 h-8 bg-[#0D5C63] flex items-center justify-center">
+<div class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4 md:p-7">
+	<header class="flex items-center justify-between mb-8 text-foreground">
+		<div class="w-10 h-10 rounded bg-[#0D5C63] flex items-center justify-center">
 			<span class="text-white font-semibold">ग्रं</span>
 		</div>
-		<div class="header-actions">
-			<button class="theme-toggle" onclick={toggleDarkMode} title="Toggle theme">
+		<div class="flex items-center gap-3">
+			<Button 
+				variant="outline"
+				size="icon"
+				class="rounded-full cursor-pointer"
+				onclick={toggleDarkMode}
+				title="Toggle theme"
+			>
 				{#if darkMode}
 					<Sun size={20} />
 				{:else}
 					<Moon size={20} />
 				{/if}
-			</button>
+			</Button>
 			{#if showInstall}
-				<button class="install-button" onclick={handleInstall}>Install App</button>
+				<Button
+					class="bg-[#0D5C63] text-white hover:bg-[#094A50] cursor-pointer"
+					onclick={handleInstall}
+				>
+					<Download size={20} />
+				</Button>
 			{/if}
 			<input
 				type="file"
@@ -150,7 +159,15 @@
 				bind:this={fileInput}
 				onchange={handleFileUpload}
 			/>
-			<button class="upload-fab" onclick={() => fileInput.click()} title="Upload EPUB">+</button>
+			<Button
+				variant="outline"
+				size="icon"
+				class="rounded-full cursor-pointer" 
+				onclick={() => fileInput.click()} 
+				title="Upload EPUB"
+			>
+				<Plus size={20} />
+			</Button>
 		</div>
 	</header>
 	<div class="pb-4 flex justify-end">
@@ -171,9 +188,9 @@
 			</Button>
 		</ButtonGroup>
 	</div>
-	<main class="library-main">
+	<main class="mx-auto">
 		{#if loading}
-			<div class="loading">
+			<div class="flex flex-col items-center justify-center gap-4 text-foreground">
 				<div class="spinner"></div>
 				<p>Loading library...</p>
 			</div>
@@ -181,48 +198,63 @@
 			<div class={`grid ${gridClasses} gap-4`}>
 				<!-- Default Book -->
 				{#if defaultBook}
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<div class="library-card" onclick={() => openBook('default')} role="button" tabindex="0">
+					<AspectRatio 
+						ratio={2/3} 
+						class="relative rounded-xl overflow-hidden shadow-md cursor-pointer transition hover:-translate-y-1 hover:shadow-xl" 
+						onclick={() => openBook('default')}
+					>
 						{#if defaultBook.cover}
-							<div class="card-bg" style="background-image: url({defaultBook.cover})"></div>
+							<div
+								class="absolute inset-0 bg-cover bg-center bg-no-repeat"
+								style="background-image: url({defaultBook.cover})"
+							></div>
 						{:else}
-							<div class="card-bg card-bg-placeholder">
-								<span>{getInitials(defaultBook.title)}</span>
+							<div class="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold">
+								{getInitials(defaultBook.title)}
 							</div>
 						{/if}
-						<div class="card-overlay">
-							<h3 class="card-title">{defaultBook.title}</h3>
+
+						<div class="absolute inset-x-0 bottom-0 p-3 pt-8 bg-linear-to-t from-black/90 via-black/40 to-transparent">
+							<h3 class="text-sm font-semibold text-white line-clamp-2">
+								{defaultBook.title}
+							</h3>
 						</div>
-					</div>
+					</AspectRatio>
 				{/if}
 
 				<!-- Uploaded Books -->
 				{#each books as book (book.id)}
-					<!-- svelte-ignore a11y_click_events_have_key_events -->
-					<div class="library-card" onclick={() => openBook(book.id)} role="button" tabindex="0">
-						{#if book.cover}
-							<div class="card-bg" style="background-image: url({book.cover})"></div>
-						{:else}
-							<div class="card-bg card-bg-placeholder">
-								<span>{getInitials(book.title)}</span>
-							</div>
-						{/if}
-						<div class="card-overlay">
-							<h3 class="card-title">{book.title}</h3>
-						</div>
-						<button
-							class="delete-btn"
-							onclick={(e) => { e.stopPropagation(); handleDeleteBook(book.id); }}
-							title="Remove book"
+					<div class="group">
+						<AspectRatio
+							ratio={2/3}
+							class="relative rounded-xl overflow-hidden shadow-md cursor-pointer transition hover:-translate-y-1 hover:shadow-xl"
+							onclick={() => openBook(book.id)}
+							role="button"
 						>
-							×
-						</button>
+							{#if book.cover}
+								<div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url({book.cover})"></div>
+							{:else}
+								<div class="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold">
+									<span>{getInitials(book.title)}</span>
+								</div>
+							{/if}
+							<div class="absolute inset-x-0 bottom-0 p-3 pt-8 bg-linear-to-t from-black/90 via-black/40 to-transparent">
+								<h3 class="m-0 text-sm font-semibold text-white leading-snug line-clamp-2 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)]">{book.title}</h3>
+							</div>
+							<button
+								class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-red-600/90 text-white border-none text-xl font-bold cursor-pointer flex items-center justify-center leading-none pb-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 z-10 hover:scale-110 hover:bg-red-600"
+								onclick={(e) => { e.stopPropagation(); handleDeleteBook(book.id); }}
+								title="Remove book"
+							>
+								×
+							</button>
+						</AspectRatio>
 					</div>
 				{/each}
 			</div>
 
 			{#if books.length === 0}
-				<div class="empty-state">
+				<div class="text-center p-16 text-foreground text-lg opacity-90">
 					<p>Your library is empty. Upload an EPUB to get started!</p>
 				</div>
 			{/if}
@@ -231,108 +263,6 @@
 </div>
 
 <style>
-	.page-wrapper {
-		min-height: 100vh;
-		background: var(--background);
-		color: var(--foreground);
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-		padding: 2rem;
-		transition: background 0.3s, color 0.3s;
-	}
-
-	.header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin: 0 auto 2rem auto;
-		color: var(--foreground);
-	}
-
-	.header h1 {
-		font-size: 2.2rem;
-		margin: 0;
-		font-weight: 700;
-	}
-
-	.header-actions {
-		display: flex;
-		gap: 0.75rem;
-		align-items: center;
-	}
-
-	.theme-toggle {
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		background: var(--secondary);
-		color: var(--secondary-foreground);
-		border: 1px solid var(--border);
-		cursor: pointer;
-		transition: transform 0.2s, box-shadow 0.2s;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.theme-toggle:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-	}
-
-	.install-button {
-		background: linear-gradient(135deg, #0D5C63, #094a50);
-		color: white;
-		border: none;
-		padding: 0.6rem 1.2rem;
-		border-radius: 8px;
-		font-size: 0.95rem;
-		font-weight: 600;
-		cursor: pointer;
-		transition: transform 0.2s, box-shadow 0.2s;
-	}
-
-	.install-button:hover {
-		transform: translateY(-2px);
-		box-shadow: 0 5px 15px rgba(13, 92, 99, 0.4);
-	}
-
-	.upload-fab {
-		width: 48px;
-		height: 48px;
-		border-radius: 50%;
-		background: linear-gradient(135deg, #007bff, #0056b3);
-		color: white;
-		border: none;
-		font-size: 1.8rem;
-		font-weight: 300;
-		cursor: pointer;
-		transition: transform 0.2s, box-shadow 0.2s;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		line-height: 1;
-		padding-bottom: 4px;
-	}
-
-	.upload-fab:hover {
-		transform: translateY(-2px) scale(1.05);
-		box-shadow: 0 5px 15px rgba(0, 123, 255, 0.4);
-	}
-
-	.library-main {
-		margin: 0 auto;
-	}
-
-	.loading {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		padding: 4rem;
-		color: var(--foreground);
-		gap: 1rem;
-	}
-
 	.spinner {
 		width: 40px;
 		height: 40px;
@@ -345,127 +275,6 @@
 	@keyframes spin {
 		to {
 			transform: rotate(360deg);
-		}
-	}
-
-	.library-card {
-		aspect-ratio: 2 / 3;
-		border-radius: 12px;
-		overflow: hidden;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-		cursor: pointer;
-		transition: transform 0.2s, box-shadow 0.2s;
-		position: relative;
-	}
-
-	.library-card:hover {
-		transform: translateY(-4px);
-		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-	}
-
-	.library-card:focus {
-		outline: 2px solid #007bff;
-		outline-offset: 2px;
-	}
-
-	.card-bg {
-		position: absolute;
-		inset: 0;
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-	}
-
-	.card-bg-placeholder {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: linear-gradient(135deg, #0D5C63, #094a50);
-		color: white;
-		font-size: 3rem;
-		font-weight: 700;
-	}
-
-	.card-overlay {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		padding: 2rem 0.75rem 0.75rem 0.75rem;
-		background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 50%, transparent 100%);
-	}
-
-	.card-title {
-		margin: 0;
-		font-size: 0.9rem;
-		font-weight: 600;
-		color: white;
-		line-height: 1.3;
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
-	}
-
-	.delete-btn {
-		position: absolute;
-		top: 6px;
-		right: 6px;
-		width: 28px;
-		height: 28px;
-		border-radius: 50%;
-		background: rgba(220, 53, 69, 0.9);
-		color: white;
-		border: none;
-		font-size: 1.2rem;
-		font-weight: 700;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		line-height: 1;
-		padding-bottom: 2px;
-		opacity: 0;
-		transition: opacity 0.2s, transform 0.2s;
-		z-index: 2;
-	}
-
-	.library-card:hover .delete-btn {
-		opacity: 1;
-	}
-
-	.delete-btn:hover {
-		transform: scale(1.1);
-		background: rgba(220, 53, 69, 1);
-	}
-
-	.empty-state {
-		text-align: center;
-		padding: 4rem;
-		color: var(--foreground);
-		font-size: 1.1rem;
-		opacity: 0.9;
-	}
-
-	/* Responsive */
-	@media (max-width: 768px) {
-		.page-wrapper {
-			padding: 1rem;
-		}
-
-		.header h1 {
-			font-size: 1.6rem;
-		}
-
-		.library-grid {
-			grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-			gap: 1rem;
-		}
-
-		.delete-btn {
-			opacity: 1;
 		}
 	}
 </style>
