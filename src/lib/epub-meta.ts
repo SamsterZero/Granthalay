@@ -9,6 +9,7 @@ export interface EpubChapter {
 	id: string;
 	title: string;
 	href: string;
+	isFrontmatter?: boolean;
 }
 
 export interface EpubDetail extends EpubMeta {
@@ -24,25 +25,26 @@ function extractChaptersFromContent(content: string, href: string): EpubChapter[
 	const doc = parser.parseFromString(content, 'text/html');
 	const chapters: EpubChapter[] = [];
 	
-	// Look for chapter headings (h1, h2, h3) that could be chapter boundaries
-	const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+	// Use headings (h1, h2) as potential chapter boundaries within a single file
+	const headings = doc.querySelectorAll('h1, h2');
 	
 	if (headings.length > 1) {
-		// Multiple headings found - treat each as a potential chapter
 		for (let i = 0; i < headings.length; i++) {
 			const heading = headings[i];
 			const title = heading.textContent?.trim();
-			if (title && !title.toLowerCase().includes('cover') && !title.toLowerCase().includes('title page')) {
+			if (title) {
 				chapters.push({
 					id: `${href}_${i}`,
 					title,
-					href
+					href: `${href}#${heading.id || ''}`
 				});
 			}
 		}
 	} else {
 		// Single heading or no headings - treat the whole file as one chapter
-		const title = doc.querySelector('title')?.textContent?.trim() || `Chapter`;
+		const title = doc.querySelector('title')?.textContent?.trim() || 
+					  doc.querySelector('h1, h2, h3')?.textContent?.trim() || 
+					  `Chapter`;
 		chapters.push({
 			id: href,
 			title,
@@ -270,56 +272,30 @@ export async function extractEpubDetail(buffer: ArrayBuffer): Promise<EpubDetail
 
 		// Cover
 		let coverHref: string | null = null;
-
 		const coverMeta = findEl(opfDoc, 'meta', null);
 		if (coverMeta && coverMeta.getAttribute('name') === 'cover') {
 			const coverId = coverMeta.getAttribute('content');
 			if (coverId) {
 				const coverItem = findElByAttrIncludes(opfDoc, 'item', 'id', coverId);
-				if (coverItem) {
-					coverHref = coverItem.getAttribute('href');
-				}
+				if (coverItem) coverHref = coverItem.getAttribute('href');
 			}
 		}
-
 		if (!coverHref) {
 			const coverItem = findElByAttrIncludes(opfDoc, 'item', 'properties', 'cover-image');
-			if (coverItem) {
-				coverHref = coverItem.getAttribute('href');
-			}
+			if (coverItem) coverHref = coverItem.getAttribute('href');
 		}
-
 		if (!coverHref) {
 			const coverItem = findElByAttrIncludes(opfDoc, 'item', 'id', 'cover');
 			if (coverItem) {
 				const mediaType = coverItem.getAttribute('media-type') || '';
-				if (mediaType.startsWith('image/')) {
-					coverHref = coverItem.getAttribute('href');
-				}
-			}
-		}
-
-		if (!coverHref) {
-			const walker = opfDoc.createTreeWalker(opfDoc.documentElement, NodeFilter.SHOW_ELEMENT);
-			let node: Node | null;
-			while ((node = walker.nextNode())) {
-				const el = node as Element;
-				if (el.localName === 'item') {
-					const mt = el.getAttribute('media-type') || '';
-					if (mt.startsWith('image/')) {
-						coverHref = el.getAttribute('href');
-						break;
-					}
-				}
+				if (mediaType.startsWith('image/')) coverHref = coverItem.getAttribute('href');
 			}
 		}
 
 		let coverDataUrl: string | null = null;
 		if (coverHref) {
 			let fullPath = coverHref;
-			if (!coverHref.startsWith('/')) {
-				fullPath = basePath + coverHref;
-			}
+			if (!coverHref.startsWith('/')) fullPath = basePath + coverHref;
 			fullPath = fullPath.replace(/\\/g, '/');
 			const imageFile = zip.file(fullPath);
 			if (imageFile) {
@@ -331,46 +307,29 @@ export async function extractEpubDetail(buffer: ArrayBuffer): Promise<EpubDetail
 		// Chapters - try TOC first for proper names
 		const spineItems = opfDoc.querySelectorAll('spine itemref');
 		const manifestItems = opfDoc.querySelectorAll('manifest item');
-		const manifestMap = new Map<string, { href: string; properties: string }>();
+		const manifestMap = new Map<string, { href: string; properties: string; mediaType: string }>();
 		manifestItems.forEach((item) => {
 			const id = item.getAttribute('id');
 			const href = item.getAttribute('href');
 			const props = item.getAttribute('properties') || '';
-			if (id && href) manifestMap.set(id, { href, properties: props });
+			const mediaType = item.getAttribute('media-type') || '';
+			if (id && href) manifestMap.set(id, { href, properties: props, mediaType });
 		});
 
-		// Detect cover href(s) to skip
-		const coverHrefs = new Set<string>();
-		for (const item of manifestItems) {
-			const props = item.getAttribute('properties') || '';
-			const id = item.getAttribute('id') || '';
-			if (props.includes('cover-image') || id.toLowerCase() === 'cover') {
-				const href = item.getAttribute('href');
-				if (href) coverHrefs.add(href.replace(/\\/g, '/'));
-			}
-		}
-
-		// Build spine order array, skipping linear="no" and cover items
-		const spineHrefs: string[] = [];
+		const spineHrefs: Array<{ href: string; mediaType: string }> = [];
 		for (const item of spineItems) {
 			const linear = item.getAttribute('linear');
 			if (linear === 'no') continue;
-
 			const idref = item.getAttribute('idref');
 			if (idref && manifestMap.has(idref)) {
-				const { href } = manifestMap.get(idref)!;
-				const normHref = href.replace(/\\/g, '/');
-				// Skip if this is the cover image itself
-				if (coverHrefs.has(normHref)) continue;
-				spineHrefs.push(href);
+				const info = manifestMap.get(idref)!;
+				spineHrefs.push({ href: info.href, mediaType: info.mediaType });
 			}
 		}
 
 		// Try to find TOC file
 		const tocTitles = new Map<string, string>();
-
-		// EPUB3: nav document
-		const navItem = findElByAttrIncludes(opfDoc, 'item', 'properties', 'nav');
+		const navItem = opfDoc.querySelector('item[properties~="nav"]');
 		if (navItem) {
 			const tocHref = navItem.getAttribute('href');
 			if (tocHref) {
@@ -378,43 +337,30 @@ export async function extractEpubDetail(buffer: ArrayBuffer): Promise<EpubDetail
 				const tocContent = await zip.file(tocPath)?.async('string');
 				if (tocContent) {
 					const tocDoc = parser.parseFromString(tocContent, 'text/html');
-					const navEls = tocDoc.querySelectorAll('nav');
-					for (const nav of navEls) {
-						const epubType = nav.getAttribute('epub:type') || nav.getAttributeNS('http://www.idpf.org/2007/ops', 'type');
-						if (!epubType || epubType.includes('toc')) {
-							const links = nav.querySelectorAll('a');
-							for (const a of links) {
-								const href = a.getAttribute('href');
-								if (href) {
-									const tocBase = tocHref.substring(0, tocHref.lastIndexOf('/') + 1);
-									const resolvedHref = href.startsWith('/') ? href.substring(1) : tocBase + href;
-									const text = a.textContent?.trim();
-									if (text) {
-										// Use the full href with fragment to preserve all chapters
-										tocTitles.set(resolvedHref.replace(/\\/g, '/'), text);
-									}
-								}
-							}
+					const links = tocDoc.querySelectorAll('nav[epub\\:type="toc"] a, nav[role="doc-toc"] a, nav a');
+					for (const a of links) {
+						const href = a.getAttribute('href');
+						const text = a.textContent?.trim();
+						if (href && text) {
+							const tocBase = tocHref.substring(0, tocHref.lastIndexOf('/') + 1);
+							const resolvedHref = (href.startsWith('/') ? href.substring(1) : tocBase + href).replace(/\\/g, '/');
+							const cleanHref = resolvedHref.split('#')[0];
+							if (!tocTitles.has(cleanHref)) tocTitles.set(cleanHref, text);
+							tocTitles.set(resolvedHref, text);
 						}
 					}
 				}
 			}
 		}
 
-		// EPUB2: NCX fallback
 		if (tocTitles.size === 0) {
 			const spineToc = opfDoc.querySelector('spine');
-			const tocAttr = spineToc?.getAttribute('toc');
-			let ncxHref: string | null = null;
-			if (tocAttr && manifestMap.has(tocAttr)) {
-				ncxHref = manifestMap.get(tocAttr)!.href;
-			} else {
+			const ncxId = spineToc?.getAttribute('toc');
+			let ncxHref = ncxId ? manifestMap.get(ncxId)?.href || null : null;
+			if (!ncxHref) {
 				for (const item of manifestItems) {
 					const href = item.getAttribute('href');
-					if (href && href.endsWith('.ncx')) {
-						ncxHref = href;
-						break;
-					}
+					if (href && href.endsWith('.ncx')) { ncxHref = href; break; }
 				}
 			}
 			if (ncxHref) {
@@ -422,67 +368,75 @@ export async function extractEpubDetail(buffer: ArrayBuffer): Promise<EpubDetail
 				const ncxContent = await zip.file(ncxPath)?.async('string');
 				if (ncxContent) {
 					const ncxDoc = parser.parseFromString(ncxContent, 'application/xml');
-					// Get ALL navPoints, including nested ones
 					const navPoints = ncxDoc.querySelectorAll('navPoint');
 					for (const np of navPoints) {
-						const labelEl = np.querySelector('navLabel > text');
-						const contentEl = np.querySelector('content');
-						if (labelEl && contentEl) {
-							const label = labelEl.textContent?.trim();
-							const src = contentEl.getAttribute('src');
-							if (label && src) {
-								const cleanSrc = src.split('#')[0];
-								const ncxBase = ncxHref.substring(0, ncxHref.lastIndexOf('/') + 1);
-								const resolvedSrc = cleanSrc.startsWith('/') ? cleanSrc.substring(1) : ncxBase + cleanSrc;
-								if (!tocTitles.has(resolvedSrc)) {
-									tocTitles.set(resolvedSrc.replace(/\\/g, '/'), label);
-								}
-							}
+						const label = np.querySelector('navLabel > text')?.textContent?.trim();
+						const src = np.querySelector('content')?.getAttribute('src');
+						if (label && src) {
+							const ncxBase = ncxHref.substring(0, ncxHref.lastIndexOf('/') + 1);
+							const resolvedSrc = (src.startsWith('/') ? src.substring(1) : ncxBase + src).replace(/\\/g, '/');
+							const cleanSrc = resolvedSrc.split('#')[0];
+							if (!tocTitles.has(cleanSrc)) tocTitles.set(cleanSrc, label);
+							tocTitles.set(resolvedSrc, label);
 						}
 					}
 				}
 			}
 		}
 
-		// Build chapters by analyzing actual content for chapter boundaries
 		const chapters: EpubChapter[] = [];
 		let chapterIndex = 0;
-
-		console.debug('[epub-meta] Chapter extraction starting');
-		console.debug('[epub-meta] Total spine hrefs:', spineHrefs.length);
-		console.debug('[epub-meta] Spine hrefs:', spineHrefs);
-
-		// Process each spine item and extract actual chapters from content
-		for (const href of spineHrefs) {
+		for (const { href, mediaType } of spineHrefs) {
 			const normalizedHref = href.replace(/\\/g, '/');
 			const fullPath = basePath + href;
 			
-			console.debug(`[epub-meta] Processing spine item ${chapterIndex + 1}: ${normalizedHref}`);
-			
+			if (mediaType.startsWith('image/')) {
+				// Handle image-only spine item
+				let chapterTitle = 'Image';
+				if (tocTitles.has(normalizedHref)) {
+					chapterTitle = tocTitles.get(normalizedHref)!;
+				}
+				
+				chapters.push({
+					id: String(chapterIndex),
+					title: chapterTitle,
+					href: normalizedHref,
+					isFrontmatter: chapterTitle.toLowerCase().includes('cover') || chapterIndex === 0
+				});
+				chapterIndex++;
+				continue;
+			}
+
 			const content = await zip.file(fullPath)?.async('string');
 			if (content) {
-				// Extract actual chapters from this content
 				const contentChapters = extractChaptersFromContent(content, href);
-				
 				for (const contentChapter of contentChapters) {
-					// Skip cover pages
-					const titleLower = contentChapter.title.toLowerCase();
-					if (titleLower.includes('cover') || titleLower.includes('title page')) {
-						console.debug(`[epub-meta] Skipping cover/title page: "${contentChapter.title}"`);
-						continue;
+					let chapterTitle = contentChapter.title;
+					if (tocTitles.has(contentChapter.href)) {
+						chapterTitle = tocTitles.get(contentChapter.href)!;
+					} else if (tocTitles.has(normalizedHref)) {
+						chapterTitle = tocTitles.get(normalizedHref)!;
 					}
-					
-					console.debug(`[epub-meta] Adding chapter ${chapterIndex + 1}: "${contentChapter.title}" (${href})`);
+
+					const titleLower = chapterTitle.toLowerCase();
+					const isFrontmatter = titleLower.includes('cover') || 
+										  titleLower.includes('title page') || 
+										  titleLower.includes('half title') ||
+										  titleLower.includes('dedication') ||
+										  titleLower.includes('preface') ||
+										  titleLower.includes('author\'s note') ||
+										  titleLower.includes('introduction');
+
 					chapters.push({
 						...contentChapter,
-						id: String(chapterIndex)
+						title: chapterTitle,
+						id: String(chapterIndex),
+						isFrontmatter
 					});
 					chapterIndex++;
 				}
 			}
 		}
-
-		console.debug(`[epub-meta] Chapter extraction complete. Total chapters: ${chapters.length}`);
 
 		return { title, cover: coverDataUrl, author, description, chapters };
 	} catch (e) {

@@ -5,8 +5,9 @@
 	import { onMount } from 'svelte';
 	import { getBookById } from '$lib/db';
 	import { extractEpubDetail } from '$lib/epub-meta';
-	import { ArrowLeft, Play } from 'lucide-svelte';
+	import { Play } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 
 	const bookId = $derived(page.params.bookId ?? 'default');
 
@@ -16,7 +17,7 @@
 	let author = $state('');
 	let description = $state('');
 	let cover = $state<string | null>(null);
-	let chapters = $state<Array<{ id: string; title: string; href: string }>>([]);
+	let chapters = $state<Array<{ id: string; title: string; href: string; isFrontmatter?: boolean }>>([]);
 
 	onMount(async () => {
 		try {
@@ -76,7 +77,7 @@
 	<!-- Header -->
 	<div class="border-b px-6 py-4 flex items-center gap-4 shrink-0">
 		<Button variant="ghost" size="icon" onclick={goBack}>
-			<ArrowLeft class="w-5 h-5" />
+			<ChevronLeft class="h-4 w-4" />
 		</Button>
 		<h1 class="font-semibold text-lg line-clamp-1">{title}</h1>
 	</div>
@@ -133,15 +134,18 @@
 			<div class="flex-1 lg:h-full lg:min-h-0 p-6 lg:p-8 overflow-y-auto">
 				<h3 class="text-lg font-semibold mb-4">Chapters</h3>
 				<div class="space-y-2">
-					{#each chapters as chapter, index (chapter.id)}
+					{#each chapters.filter(c => !c.isFrontmatter) as chapter, index (chapter.id)}
 						<button
 							class="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-accent transition-colors text-left"
-							onclick={() => startReading(index)}
+							onclick={() => startReading(chapters.indexOf(chapter))}
 						>
-							<span class="text-muted-foreground text-sm w-8">{index + 1}</span>
+							<span class="text-muted-foreground text-sm w-8">
+								{index + 1}
+							</span>
 							<div class="flex-1 min-w-0">
 								<p class="font-medium truncate">{chapter.title}</p>
 							</div>
+							<Play class="w-4 h-4 text-muted-foreground" />
 						</button>
 					{:else}
 						<p class="text-muted-foreground text-center py-8">No chapters found</p>
