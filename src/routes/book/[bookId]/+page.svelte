@@ -58,8 +58,13 @@
 		goto(resolve('/'));
 	}
 
-	function startReading() {
-		goto(`${resolve('/reader')}?bookId=${bookId}`);
+	function startReading(chapterIndex?: number) {
+		const url = new URL(`${resolve('/reader')}`, window.location.origin);
+		url.searchParams.set('bookId', bookId);
+		if (chapterIndex !== undefined) {
+			url.searchParams.set('chapter', chapterIndex.toString());
+		}
+		goto(url.pathname + url.search);
 	}
 
 	function getInitials(name: string): string {
@@ -131,7 +136,7 @@
 					{#each chapters as chapter, index (chapter.id)}
 						<button
 							class="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-accent transition-colors text-left"
-							onclick={startReading}
+							onclick={() => startReading(index)}
 						>
 							<span class="text-muted-foreground text-sm w-8">{index + 1}</span>
 							<div class="flex-1 min-w-0">
@@ -150,7 +155,7 @@
 	<Button
 		class="fixed bottom-6 right-6 rounded-lg px-6 py-6 shadow-lg hover:shadow-xl transition-shadow"
 		size="lg"
-		onclick={startReading}
+		onclick={() => startReading()}
 	>
 		<Play class="w-5 h-5 mr-2" />
 		Resume

@@ -19,6 +19,40 @@ export interface EpubDetail extends EpubMeta {
 
 const DC_NS = 'http://purl.org/dc/elements/1.1/';
 
+function extractChaptersFromContent(content: string, href: string): EpubChapter[] {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(content, 'text/html');
+	const chapters: EpubChapter[] = [];
+	
+	// Look for chapter headings (h1, h2, h3) that could be chapter boundaries
+	const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+	
+	if (headings.length > 1) {
+		// Multiple headings found - treat each as a potential chapter
+		for (let i = 0; i < headings.length; i++) {
+			const heading = headings[i];
+			const title = heading.textContent?.trim();
+			if (title && !title.toLowerCase().includes('cover') && !title.toLowerCase().includes('title page')) {
+				chapters.push({
+					id: `${href}_${i}`,
+					title,
+					href
+				});
+			}
+		}
+	} else {
+		// Single heading or no headings - treat the whole file as one chapter
+		const title = doc.querySelector('title')?.textContent?.trim() || `Chapter`;
+		chapters.push({
+			id: href,
+			title,
+			href
+		});
+	}
+	
+	return chapters;
+}
+
 function blobToDataUrl(blob: Blob): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const reader = new FileReader();
@@ -410,156 +444,40 @@ export async function extractEpubDetail(buffer: ArrayBuffer): Promise<EpubDetail
 			}
 		}
 
-		// Build chapters: prioritize TOC entries over spine items
+		// Build chapters by analyzing actual content for chapter boundaries
 		const chapters: EpubChapter[] = [];
 		let chapterIndex = 0;
-		const seenHrefs = new Set<string>();
 
 		console.debug('[epub-meta] Chapter extraction starting');
 		console.debug('[epub-meta] Total spine hrefs:', spineHrefs.length);
 		console.debug('[epub-meta] Spine hrefs:', spineHrefs);
-		console.debug('[epub-meta] TOC titles found:', tocTitles.size);
-		console.debug('[epub-meta] TOC entries:', Array.from(tocTitles.entries()));
 
-		// If we have TOC entries, use them as the primary source of chapters
-		if (tocTitles.size > 0) {
-			console.debug('[epub-meta] Using TOC entries as primary chapter source');
+		// Process each spine item and extract actual chapters from content
+		for (const href of spineHrefs) {
+			const normalizedHref = href.replace(/\\/g, '/');
+			const fullPath = basePath + href;
 			
-			// Create a map of spine items for validation
-			const spineMap = new Map<string, string>();
-			for (const href of spineHrefs) {
-				const normalizedHref = href.replace(/\\/g, '/');
-				const fullPath = (basePath + href).replace(/\\/g, '/');
-				spineMap.set(normalizedHref, fullPath);
-				spineMap.set(fullPath, normalizedHref);
-				
-				// Also add filename-only mapping
-				const fileName = normalizedHref.split('/').pop();
-				if (fileName) {
-					spineMap.set(fileName, normalizedHref);
-				}
-			}
+			console.debug(`[epub-meta] Processing spine item ${chapterIndex + 1}: ${normalizedHref}`);
 			
-			// Process TOC entries in order
-			for (const [tocHref, tocTitle] of tocTitles) {
-				console.debug(`[epub-meta] Processing TOC entry: "${tocTitle}" -> ${tocHref}`);
+			const content = await zip.file(fullPath)?.async('string');
+			if (content) {
+				// Extract actual chapters from this content
+				const contentChapters = extractChaptersFromContent(content, href);
 				
-				// Extract the base href (remove fragment) for spine matching
-				const [baseHref] = tocHref.split('#');
-				
-				// Try to find the actual spine href that matches this TOC entry
-				let actualHref = null;
-				
-				// Direct match
-				if (spineMap.has(baseHref)) {
-					actualHref = spineMap.get(baseHref);
-				}
-				// Try with base path
-				else if (spineMap.has(basePath + baseHref)) {
-					actualHref = spineMap.get(basePath + baseHref);
-				}
-				// Try filename matching
-				else {
-					const fileName = baseHref.split('/').pop();
-					if (fileName && spineMap.has(fileName)) {
-						actualHref = spineMap.get(fileName);
-					}
-				}
-				
-				if (!actualHref) {
-					console.debug(`[epub-meta] No spine match found for TOC entry "${tocTitle}", using TOC href directly`);
-					actualHref = baseHref;
-				}
-				
-				// Skip if this looks like a cover or title page
-				const titleLower = tocTitle.toLowerCase();
-				if (titleLower.includes('cover') || (titleLower.includes('title') && chapterIndex === 0)) {
-					console.debug(`[epub-meta] Skipping cover/title page: "${tocTitle}"`);
-					continue;
-				}
-				
-				// Use the full TOC href (including fragment) to avoid duplicates
-				const normalizedTocHref = tocHref.replace(/\\/g, '/');
-				if (seenHrefs.has(normalizedTocHref)) {
-					console.debug(`[epub-meta] Skipping duplicate TOC href: ${normalizedTocHref}`);
-					continue;
-				}
-				
-				console.debug(`[epub-meta] Adding chapter ${chapterIndex + 1}: "${tocTitle}" (${tocHref})`);
-				seenHrefs.add(normalizedTocHref);
-				chapters.push({
-					id: String(chapterIndex),
-					title: tocTitle,
-					href: tocHref
-				});
-				chapterIndex++;
-			}
-		} else {
-			// Fallback to spine-based extraction if no TOC
-			console.debug('[epub-meta] No TOC found, falling back to spine-based extraction');
-			
-			for (const href of spineHrefs) {
-				const normalizedHref = href.replace(/\\/g, '/');
-				let chapterTitle = tocTitles.get(normalizedHref);
-
-				console.debug(`[epub-meta] Processing spine item ${chapterIndex + 1}: ${normalizedHref}`);
-
-				if (!chapterTitle) {
-					// Try resolving against basePath for TOC match
-					const fullPath = (basePath + href).replace(/\\/g, '/');
-					chapterTitle = tocTitles.get(fullPath);
-					console.debug(`[epub-meta] Tried full path "${fullPath}": ${chapterTitle ? 'found' : 'not found'}`);
-				}
-
-				if (!chapterTitle) {
-					// Try matching by filename only (TOC may use different relative path)
-					const fileName = normalizedHref.split('/').pop();
-					if (fileName) {
-						for (const [tocHref, tocTitle] of tocTitles) {
-							if (tocHref.endsWith('/' + fileName) || tocHref === fileName) {
-								chapterTitle = tocTitle;
-								console.debug(`[epub-meta] Found match by filename "${fileName}": "${tocTitle}"`);
-								break;
-							}
-						}
-					}
-				}
-
-				if (!chapterTitle) {
-					// Fall back to HTML <title>
-					const fullPath = basePath + href;
-					const content = await zip.file(fullPath)?.async('string');
-					if (content) {
-						const contentDoc = parser.parseFromString(content, 'text/html');
-						chapterTitle = contentDoc.querySelector('title')?.textContent?.trim();
-						console.debug(`[epub-meta] Used HTML title for "${href}": "${chapterTitle}"`);
-					}
-				}
-
-				if (!chapterTitle) {
-					chapterTitle = `Chapter ${chapterIndex + 1}`;
-					console.debug(`[epub-meta] Using fallback title for "${href}": "${chapterTitle}"`);
-				}
-
-				// Skip duplicate hrefs and cover pages
-				if (!seenHrefs.has(normalizedHref)) {
-					// Also skip if title looks like a cover
-					const titleLower = chapterTitle.toLowerCase();
-					if (titleLower.includes('cover') && chapterIndex === 0) {
-						console.debug(`[epub-meta] Skipping cover page: "${chapterTitle}" (${normalizedHref})`);
-						seenHrefs.add(normalizedHref);
+				for (const contentChapter of contentChapters) {
+					// Skip cover pages
+					const titleLower = contentChapter.title.toLowerCase();
+					if (titleLower.includes('cover') || titleLower.includes('title page')) {
+						console.debug(`[epub-meta] Skipping cover/title page: "${contentChapter.title}"`);
 						continue;
 					}
-					console.debug(`[epub-meta] Adding chapter ${chapterIndex + 1}: "${chapterTitle}" (${normalizedHref})`);
-					seenHrefs.add(normalizedHref);
+					
+					console.debug(`[epub-meta] Adding chapter ${chapterIndex + 1}: "${contentChapter.title}" (${href})`);
 					chapters.push({
-						id: String(chapterIndex),
-						title: chapterTitle,
-						href
+						...contentChapter,
+						id: String(chapterIndex)
 					});
 					chapterIndex++;
-				} else {
-					console.debug(`[epub-meta] Skipping duplicate href: ${normalizedHref}`);
 				}
 			}
 		}

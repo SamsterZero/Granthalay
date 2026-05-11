@@ -9,6 +9,71 @@
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { getBookById } from '$lib/db';
 
+function extractChaptersFromContent(content: string, href: string): Array<{ title: string; href: string; content: string }> {
+	const parser = new DOMParser();
+	const doc = parser.parseFromString(content, 'text/html');
+	const chapters: Array<{ title: string; href: string; content: string }> = [];
+	
+	// Look for chapter headings (h1, h2, h3) that could be chapter boundaries
+	const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+	
+	if (headings.length > 1) {
+		// Multiple headings found - treat each as a potential chapter
+		for (let i = 0; i < headings.length; i++) {
+			const heading = headings[i];
+			const title = heading.textContent?.trim();
+			if (title && !title.toLowerCase().includes('cover') && !title.toLowerCase().includes('title page')) {
+				// Create a temporary div to extract content between this heading and the next
+				const tempDiv = document.createElement('div');
+				let currentElement = heading;
+				
+				// Add all content from this heading until the next heading of same or higher level
+				const currentLevel = parseInt(heading.tagName.substring(1));
+				let nextElement = heading.nextSibling;
+				
+				while (nextElement) {
+					if (nextElement.nodeType === Node.ELEMENT_NODE) {
+						const element = nextElement as Element;
+						if (element.tagName.match(/^H[1-6]$/)) {
+							const elementLevel = parseInt(element.tagName.substring(1));
+							if (elementLevel <= currentLevel) {
+								break; // Stop at next heading of same or higher level
+							}
+						}
+					}
+					
+					if (nextElement.nodeType === Node.ELEMENT_NODE || nextElement.nodeType === Node.TEXT_NODE) {
+						tempDiv.appendChild(nextElement.cloneNode(true));
+					}
+					
+					nextElement = nextElement.nextSibling;
+				}
+				
+				// Also include the heading itself
+				const chapterDiv = document.createElement('div');
+				chapterDiv.appendChild(heading.cloneNode(true));
+				chapterDiv.innerHTML += tempDiv.innerHTML;
+				
+				chapters.push({
+					title,
+					href,
+					content: chapterDiv.innerHTML
+				});
+			}
+		}
+	} else {
+		// Single heading or no headings - treat the whole file as one chapter
+		const title = doc.querySelector('title')?.textContent?.trim() || `Chapter`;
+		chapters.push({
+			title,
+			href,
+			content: doc.body?.innerHTML || content
+		});
+	}
+	
+	return chapters;
+}
+
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let bookTitle = $state('Unknown Book');
@@ -34,6 +99,8 @@
 		try {
 			const params = new URLSearchParams(window.location.search);
 			const bookId = params.get('bookId') || 'default';
+			const chapterParam = params.get('chapter');
+			const targetChapter = chapterParam ? parseInt(chapterParam, 10) : 0;
 
 			let arrayBuffer: ArrayBuffer;
 
@@ -91,7 +158,19 @@
 				}
 			});
 
-			// Extract chapters
+			// Build spine hrefs for chapter extraction
+			const spineHrefs: string[] = [];
+			for (const item of spineItems) {
+				const idref = item.getAttribute('idref');
+				if (idref && manifestMap.has(idref)) {
+					const href = manifestMap.get(idref);
+					if (href) {
+						spineHrefs.push(href);
+					}
+				}
+			}
+
+			// Extract chapters using the same logic as epub-meta.ts
 			const basePath = rootfilePath.substring(0, rootfilePath.lastIndexOf('/') + 1);
 			
 			// Extract and process CSS files
@@ -109,17 +188,26 @@
 					}
 				}
 			}
-			for (const item of spineItems) {
-				const idref = item.getAttribute('idref');
-				if (idref && manifestMap.has(idref)) {
-					const href = manifestMap.get(idref);
-					const fullPath = basePath + href;
-					const content = await epub.file(fullPath)?.async('string');
-					if (content) {
+			for (const href of spineHrefs) {
+				const fullPath = basePath + href;
+				const content = await epub.file(fullPath)?.async('string');
+				if (content) {
+					// Extract actual chapters from this content
+					const contentChapters = extractChaptersFromContent(content, href);
+					
+					for (const contentChapter of contentChapters) {
+						// Skip cover pages
+						const titleLower = contentChapter.title.toLowerCase();
+						if (titleLower.includes('cover') || titleLower.includes('title page')) {
+							continue;
+						}
+						
+						// Use the pre-extracted content for this chapter
+						const chapterContent = contentChapter.content;
+						
 						// Process HTML content and handle images
-						const contentDoc = parser.parseFromString(content, 'text/html');
-						const title =
-							contentDoc.querySelector('title')?.textContent || `Chapter ${chapters.length + 1}`;
+						const contentDoc = parser.parseFromString(chapterContent, 'text/html');
+						const title = contentChapter.title;
 
 						// Process images in the content
 						const images = contentDoc.querySelectorAll('img');
@@ -142,11 +230,11 @@
 						// Process SVG image elements (for cover images)
 						const svgImages = contentDoc.querySelectorAll('svg image');
 						for (const svgImg of svgImages) {
-							const href = svgImg.getAttribute('xlink:href') || svgImg.getAttribute('href');
-							if (href) {
+							const hrefAttr = svgImg.getAttribute('xlink:href') || svgImg.getAttribute('href');
+							if (hrefAttr) {
 								// Convert relative image paths to blob URLs
-								const imagePath = href.startsWith('./') ? href.substring(2) : href;
-								const fullImagePath = href.startsWith('/') ? href.substring(1) : basePath + imagePath;
+								const imagePath = hrefAttr.startsWith('./') ? hrefAttr.substring(2) : hrefAttr;
+								const fullImagePath = hrefAttr.startsWith('/') ? hrefAttr.substring(1) : basePath + imagePath;
 
 								const imageFile = epub.file(fullImagePath);
 								if (imageFile) {
@@ -181,14 +269,13 @@
 						const cssLinks = contentDoc.querySelectorAll('link[rel="stylesheet"]');
 						let combinedCSS = '';
 						
-						console.log('CSS links found:', cssLinks.length);
 						for (const cssLink of cssLinks) {
-							const href = cssLink.getAttribute('href');
-							console.log('Processing CSS link:', href);
-							if (href && cssMap.has(href)) {
-								const css = cssMap.get(href);
-								console.log('CSS found for', href, 'length:', css?.length);
-								combinedCSS += css + '\n';
+							const cssHref = cssLink.getAttribute('href');
+							if (cssHref && cssMap.has(cssHref)) {
+								const css = cssMap.get(cssHref);
+								if (css) {
+									combinedCSS += css + '\n';
+								}
 							}
 						}
 
@@ -304,7 +391,7 @@
 						});
 						chapters.push({
 							title,
-							href: fullPath,
+							href: contentChapter.href,
 							content: processedContent,
 							css: cssForChapter
 						});
@@ -313,7 +400,10 @@
 			}
 
 			if (chapters.length > 0) {
-				chapterCSS = chapters[0].css;
+				// Set initial chapter based on URL parameter
+				const initialChapter = Math.min(Math.max(0, targetChapter), chapters.length - 1);
+				currentChapter = initialChapter;
+				chapterCSS = chapters[initialChapter].css;
 			} else {
 				throw new Error('No readable content found in EPUB');
 			}
@@ -393,12 +483,18 @@
 	function goToChapter(index: number) {
 		if (index >= 0 && index < chapters.length) {
 			currentChapter = index;
-			chapterCSS = chapters[index].css;
-			
 			currentPage = 0;
-			console.log('Changed to chapter', index, 'CSS length:', chapters[index].css.length);
+			console.log('Changed to chapter', index, 'Title:', chapters[index].title);
 		}
 	}
+
+	// Reactive effect to update chapter CSS when currentChapter changes
+	$effect(() => {
+		if (chapters[currentChapter]) {
+			chapterCSS = chapters[currentChapter].css;
+			console.log('Updated chapterCSS for chapter', currentChapter, 'Title:', chapters[currentChapter].title);
+		}
+	});
 
 	// Reactive effect to inject CSS into document head
 	$effect(() => {
@@ -644,7 +740,7 @@
 	<!-- Footer -->
 	<footer class="border-t border-border bg-background px-6 py-3 text-center">
 		<p class="text-sm text-muted-foreground">
-			Page {currentPage + 1} / {totalPages}
+			Page {currentPage + 1} / {totalPages} • Chapter {currentChapter + 1} of {chapters.length}
 		</p>
 	</footer>
 </div>
