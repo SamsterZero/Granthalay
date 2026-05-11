@@ -130,6 +130,14 @@
 			<span class="text-white font-semibold">ग्रं</span>
 		</div>
 		<div class="flex items-center gap-3">
+			{#if showInstall}
+				<Button
+					class="bg-[#0D5C63] text-white rounded-full hover:bg-[#094A50] cursor-pointer"
+					onclick={handleInstall}
+				>
+					<Download size={20} />
+				</Button>
+			{/if}
 			<Button 
 				variant="outline"
 				size="icon"
@@ -143,14 +151,6 @@
 					<Moon size={20} />
 				{/if}
 			</Button>
-			{#if showInstall}
-				<Button
-					class="bg-[#0D5C63] text-white hover:bg-[#094A50] cursor-pointer"
-					onclick={handleInstall}
-				>
-					<Download size={20} />
-				</Button>
-			{/if}
 			<input
 				type="file"
 				accept=".epub"
