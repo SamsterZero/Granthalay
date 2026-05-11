@@ -4,12 +4,17 @@
 	import { onMount } from 'svelte';
 	import { saveBook, getAllBooks, deleteBookById, type BookRecord } from '$lib/db';
 	import { extractEpubMeta } from '$lib/epub-meta';
-	import { Moon, Sun } from 'lucide-svelte';
+	import { Moon, Sun, Grid2x2, Grid3x3 } from 'lucide-svelte';
+	import { ButtonGroup } from '$lib/components/ui/button-group';
+	import { Button } from '$lib/components/ui/button';
 
 	interface BeforeInstallPromptEvent extends Event {
 		prompt: () => void;
 		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 	}
+
+	type GridMode = 'compact' | 'comfortable';
+
 
 	let fileInput: HTMLInputElement;
 	let books = $state<BookRecord[]>([]);
@@ -18,6 +23,13 @@
 	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
 	let showInstall = $state(false);
 	let darkMode = $state(false);
+	let gridMode: GridMode = $state<GridMode>('compact');
+
+	const gridClasses = $derived(
+		gridMode === "compact" 
+			? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7'
+			: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
+	);
 
 	onMount(async () => {
 		const savedTheme = localStorage.getItem('theme');
@@ -92,6 +104,11 @@
 		}
 	}
 
+	function setGridMode(mode: GridMode) {
+		if (gridMode === mode) return; // prevents repeated shrinking/growing
+		gridMode = mode;
+	}
+
 	function getInitials(title: string): string {
 		return title.charAt(0).toUpperCase();
 	}
@@ -99,7 +116,9 @@
 
 <div class="page-wrapper">
 	<header class="header">
-		<h1>📚 My Library</h1>
+		<div class="w-8 h-8 bg-[#0D5C63] flex items-center justify-center">
+			<span class="text-white font-semibold">ग्रं</span>
+		</div>
 		<div class="header-actions">
 			<button class="theme-toggle" onclick={toggleDarkMode} title="Toggle theme">
 				{#if darkMode}
@@ -122,7 +141,24 @@
 			<button class="upload-fab" onclick={() => fileInput.click()} title="Upload EPUB">+</button>
 		</div>
 	</header>
-
+	<div class="pb-4 flex justify-end">
+		<ButtonGroup aria-label="Button group">
+			<Button
+				variant={gridMode === 'comfortable' ? 'default' : 'outline'}
+				disabled={gridMode === 'comfortable'}
+				onclick={() => setGridMode('comfortable')}
+			>
+				<Grid2x2 size={20}/>
+			</Button>
+			<Button
+				variant={gridMode === 'compact' ? 'default' : 'outline'}
+				disabled={gridMode === 'compact'}
+				onclick={() => setGridMode('compact')}
+			>
+				<Grid3x3 size={20}/>
+			</Button>
+		</ButtonGroup>
+	</div>
 	<main class="library-main">
 		{#if loading}
 			<div class="loading">
@@ -130,7 +166,7 @@
 				<p>Loading library...</p>
 			</div>
 		{:else}
-			<div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-4">
+			<div class={`grid ${gridClasses} gap-4`}>
 				<!-- Default Book -->
 				{#if defaultBook}
 					<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -196,7 +232,6 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		max-width: 1200px;
 		margin: 0 auto 2rem auto;
 		color: var(--foreground);
 	}
@@ -273,7 +308,6 @@
 	}
 
 	.library-main {
-		max-width: 1200px;
 		margin: 0 auto;
 	}
 
@@ -301,12 +335,6 @@
 			transform: rotate(360deg);
 		}
 	}
-
-	/* .library-grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-		gap: 1.5rem;
-	} */
 
 	.library-card {
 		aspect-ratio: 2 / 3;
