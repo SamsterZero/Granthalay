@@ -127,7 +127,7 @@
 	}
 
 	$effect(() => {
-		const timer = setTimeout(updatePagination, 2000, chapters[currentChapter], contentContainer, containerWidth);
+		const timer = setTimeout(updatePagination, 100, chapters[currentChapter], contentContainer, containerWidth);
 		return () => clearTimeout(timer);
 	});
 
@@ -269,7 +269,7 @@
 		<Button variant="ghost" onclick={goBack} class="flex items-center gap-2"><ChevronLeft class="h-4 w-4" /></Button>
 		<div class="max-w-xs text-left sm:text-center">
 			<h1 class="truncate text-xl font-semibold text-foreground">{bookTitle}</h1>
-			{#if chapters[currentChapter]}<p class="truncate text-sm text-muted-foreground">{chapters[currentChapter]?.title}</p>{/if}
+			{#if chapters[currentChapter]}<p class="truncate text-xs text-muted-foreground">{chapters[currentChapter]?.title}</p>{/if}
 		</div>
 		<Button variant="outline" size="icon" class="rounded-full cursor-pointer" onclick={toggleDarkMode}>
 			{#if darkMode}<Sun size={20} />{:else}<Moon size={20} />{/if}
