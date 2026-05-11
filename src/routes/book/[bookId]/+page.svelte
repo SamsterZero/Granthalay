@@ -4,7 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { getBookById, type BookRecord } from '$lib/db';
-	import { extractEpubDetail } from '$lib/epub-meta';
+	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
 	import { Play } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
@@ -17,7 +17,7 @@
 	let author = $state('');
 	let description = $state('');
 	let cover = $state<string | null>(null);
-	let chapters = $state<Array<{ id: string; title: string; href: string; isFrontmatter?: boolean }>>([]);
+	let chapters = $state<EpubChapter[]>([]);
 	let currentChapterIndex = $state<number | null>(null);
 	let currentPageIndex = $state<number | null>(null);
 
@@ -43,7 +43,14 @@
 				storedTitle = record.title;
 			}
 
-			const detail = await extractEpubDetail(arrayBuffer);
+			const engine = new EpubEngine(arrayBuffer);
+			const spineInfos = await engine.init();
+			chapters = await engine.parseChapters(spineInfos);
+			
+			author = engine.metadata.author;
+			description = engine.metadata.description;
+			storedTitle = engine.metadata.title;
+			storedCover = engine.metadata.cover;
 
 			let storedRecord: Partial<BookRecord> | null = null;
 			if (bookId === 'default') {
@@ -64,11 +71,10 @@
 				currentPageIndex = storedRecord.currentPage ?? null;
 			}
 
-			title = storedTitle || detail.title;
-			author = detail.author;
-			description = detail.description;
-			cover = storedCover || detail.cover;
-			chapters = detail.chapters;
+			title = storedTitle || engine.metadata.title;
+			author = engine.metadata.author;
+			description = engine.metadata.description;
+			cover = storedCover || engine.metadata.cover;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to load book';
 		} finally {
@@ -162,33 +168,37 @@
 			<div class="flex-1 lg:h-full lg:min-h-0 p-6 lg:p-8 overflow-y-auto">
 				<h3 class="text-lg font-semibold mb-4">Chapters</h3>
 				<div class="space-y-2">
-					{#each chapters.filter(c => !c.isFrontmatter) as chapter, index (chapter.id)}
+					{#each chapters.filter(c => !c.isFrontmatter) as chapter, index (chapter.href)}
+						{@const globalIndex = chapters.indexOf(chapter)}
+						{@const isActive = globalIndex === currentChapterIndex}
+						{@const isRead = currentChapterIndex !== null && globalIndex < currentChapterIndex}
+						
 						<button
 							class={`w-full flex items-center gap-4 p-4 rounded-lg border transition-all text-left ${
-								chapters.indexOf(chapter) < (currentChapterIndex ?? -1) 
+								isRead 
 									? 'opacity-50 grayscale bg-muted/30' 
-									: chapters.indexOf(chapter) === currentChapterIndex
+									: isActive
 										? 'border-[#0D5C63] bg-[#0D5C63]/5 ring-1 ring-[#0D5C63]/20'
 										: 'hover:bg-accent'
 							}`}
-							onclick={() => startReading(chapters.indexOf(chapter))}
+							onclick={() => startReading(globalIndex)}
 						>
-							<span class={`text-sm w-8 ${chapters.indexOf(chapter) === currentChapterIndex ? 'text-[#0D5C63] font-bold' : 'text-muted-foreground'}`}>
+							<span class={`text-sm w-8 ${isActive ? 'text-[#0D5C63] font-bold' : 'text-muted-foreground'}`}>
 								{index + 1}
 							</span>
 							<div class="flex-1 min-w-0">
-								<p class={`font-medium truncate ${chapters.indexOf(chapter) === currentChapterIndex ? 'text-[#0D5C63]' : ''}`}>
+								<p class={`font-medium truncate ${isActive ? 'text-[#0D5C63]' : ''}`}>
 									{chapter.title}
 								</p>
-								{#if chapters.indexOf(chapter) === currentChapterIndex && currentPageIndex !== null}
+								{#if isActive && currentPageIndex !== null}
 									<p class="text-[10px] text-[#0D5C63]/70 font-medium mt-0.5">Currently at Page {currentPageIndex + 1}</p>
 								{:else}
 									<p class="text-[10px] text-muted-foreground mt-0.5">
-										{chapters.indexOf(chapter) < (currentChapterIndex ?? -1) ? 'Completed' : 'Not started'}
+										{isRead ? 'Completed' : 'Not started'}
 									</p>
 								{/if}
 							</div>
-							<Play class={`w-4 h-4 ${chapters.indexOf(chapter) === currentChapterIndex ? 'text-[#0D5C63]' : 'text-muted-foreground'}`} />
+							<Play class={`w-4 h-4 ${isActive ? 'text-[#0D5C63]' : 'text-muted-foreground'}`} />
 						</button>
 					{:else}
 						<p class="text-muted-foreground text-center py-8">No chapters found</p>

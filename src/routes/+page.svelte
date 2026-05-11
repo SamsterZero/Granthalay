@@ -4,11 +4,11 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { saveBook, getAllBooks, deleteBookById, type BookRecord } from '$lib/db';
-	import { extractEpubMeta } from '$lib/epub-meta';
+	import { EpubEngine } from '$lib/epub/engine';
 	import { Moon, Sun, Grid2x2, Grid3x3, Download, Plus } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { ButtonGroup } from '$lib/components/ui/button-group';
-	import { AspectRatio } from '$lib/components/ui/aspect-ratio';
+	import BookCard from '$lib/components/BookCard.svelte';
 
 	interface BeforeInstallPromptEvent extends Event {
 		prompt: () => void;
@@ -17,7 +17,7 @@
 
 	type GridMode = 'compact' | 'comfortable';
 
-	let fileInput: HTMLInputElement;
+	let fileInput = $state<HTMLInputElement | undefined>();
 	let books = $state<BookRecord[]>([]);
 	let defaultBook = $state<{ title: string; cover: string | null; progress?: number; totalBookPages?: number } | null>(null);
 	let loading = $state(true);
@@ -53,7 +53,9 @@
 			const response = await fetch(`/books/pg78627-images-3.epub`);
 			if (response.ok) {
 				const buffer = await response.arrayBuffer();
-				const meta = await extractEpubMeta(buffer);
+				const engine = new EpubEngine(buffer);
+				await engine.init();
+				const meta = engine.metadata;
 				const stored = localStorage.getItem('book-progress-default');
 				let progress = 0;
 				let totalBookPages = 0;
@@ -91,7 +93,9 @@
 		const file = target.files?.[0];
 		if (!file || !file.name.endsWith('.epub')) return;
 		const buffer = await file.arrayBuffer();
-		const meta = await extractEpubMeta(buffer);
+		const engine = new EpubEngine(buffer);
+		await engine.init();
+		const meta = engine.metadata;
 		await saveBook(buffer, file.name, meta.title, meta.cover);
 		books = await getAllBooks();
 		if (fileInput) fileInput.value = '';
@@ -135,9 +139,6 @@
 		}
 	}
 
-	function getInitials(title: string): string {
-		return title.charAt(0).toUpperCase();
-	}
 </script>
 
 <div class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4 md:p-7">
@@ -179,7 +180,7 @@
 				variant="outline"
 				size="icon"
 				class="rounded-full cursor-pointer" 
-				onclick={() => fileInput.click()} 
+				onclick={() => fileInput?.click()} 
 				title="Upload EPUB"
 			>
 				<Plus size={20} />
@@ -214,68 +215,25 @@
 			<div class={`grid ${gridClasses} gap-4`}>
 				<!-- Default Book -->
 				{#if defaultBook}
-					<AspectRatio 
-						ratio={2/3} 
-						class="relative rounded-xl overflow-hidden shadow-md cursor-pointer transition hover:-translate-y-1 hover:shadow-xl" 
-						onclick={() => openBook('default')}
-					>
-						{#if defaultBook.progress && defaultBook.progress > 0}
-							<div class="absolute top-2 left-2 z-20 bg-[#0D5C63] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md border border-white/20">
-								{Math.round(defaultBook.progress * 100)}%
-							</div>
-						{/if}
-						{#if defaultBook.cover}
-							<div
-								class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-								style="background-image: url({defaultBook.cover})"
-							></div>
-						{:else}
-							<div class="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold">
-								{getInitials(defaultBook.title)}
-							</div>
-						{/if}
-
-						<div class="absolute inset-x-0 bottom-0 p-3 pt-8 bg-linear-to-t from-black/90 via-black/40 to-transparent">
-							<h3 class="text-sm font-semibold text-white line-clamp-2">
-								{defaultBook.title}
-							</h3>
-						</div>
-					</AspectRatio>
+					<BookCard
+						id="default"
+						title={defaultBook.title}
+						cover={defaultBook.cover}
+						progress={defaultBook.progress}
+						onOpen={openBook}
+					/>
 				{/if}
 
 				<!-- Uploaded Books -->
 				{#each books as book (book.id)}
-					<div class="group">
-						<AspectRatio
-							ratio={2/3}
-							class="relative rounded-xl overflow-hidden shadow-md cursor-pointer transition hover:-translate-y-1 hover:shadow-xl"
-							onclick={() => openBook(book.id)}
-							role="button"
-						>
-							{#if book.progress && book.progress > 0}
-								<div class="absolute top-2 left-2 z-20 bg-[#0D5C63] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md border border-white/20">
-									{Math.round(book.progress * 100)}%
-								</div>
-							{/if}
-							{#if book.cover}
-								<div class="absolute inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url({book.cover})"></div>
-							{:else}
-								<div class="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold">
-									<span>{getInitials(book.title)}</span>
-								</div>
-							{/if}
-							<div class="absolute inset-x-0 bottom-0 p-3 pt-8 bg-linear-to-t from-black/90 via-black/40 to-transparent">
-								<h3 class="m-0 text-sm font-semibold text-white leading-snug line-clamp-2 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)]">{book.title}</h3>
-							</div>
-							<button
-								class="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-red-600/90 text-white border-none text-xl font-bold cursor-pointer flex items-center justify-center leading-none pb-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-200 z-10 hover:scale-110 hover:bg-red-600"
-								onclick={(e) => { e.stopPropagation(); handleDeleteBook(book.id); }}
-								title="Remove book"
-							>
-								×
-							</button>
-						</AspectRatio>
-					</div>
+					<BookCard
+						id={book.id}
+						title={book.title}
+						cover={book.cover}
+						progress={book.progress}
+						onOpen={openBook}
+						onDelete={handleDeleteBook}
+					/>
 				{/each}
 			</div>
 
