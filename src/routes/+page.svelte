@@ -24,7 +24,15 @@
 	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
 	let showInstall = $state(false);
 	let darkMode = $state(false);
-	let gridMode: GridMode = $state<GridMode>('compact');
+
+	function getInitialGridMode(): GridMode {
+		if (!browser) return "compact";
+
+		const saved = localStorage.getItem("library-grid-mode");
+
+		return saved === "comfortable" ? "comfortable" : "compact";
+	}
+	let gridMode: GridMode = $state<GridMode>(getInitialGridMode());
 
 	const gridClasses = $derived(
 		gridMode === "compact" 
@@ -60,14 +68,6 @@
 			installPrompt = e as BeforeInstallPromptEvent;
 			showInstall = true;
 		});
-		
-		if (!browser) return;
-
-		const saved = localStorage.getItem("library-grid-mode");
-
-		if (saved === "compact" || saved === "comfortable") {
-			gridMode = saved;
-		}
 	});
 
 	async function handleFileUpload(event: Event) {
