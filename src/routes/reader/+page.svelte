@@ -78,14 +78,19 @@
 
 			const engine = new EpubEngine(arrayBuffer);
 			const spineInfos = await engine.init();
-			bookTitle = engine.metadata.title;
-			chapters = await engine.parseChapters(spineInfos);
+			if (spineInfos) {
+				chapters = await engine.parseChapters(spineInfos);
+			}
 
 			if (chapters.length > 0) {
+				bookTitle = engine.metadata.title || 'Unknown Book';
 				const initialChapter = Math.min(Math.max(0, targetChapter), chapters.length - 1);
 				currentChapter = initialChapter;
 				currentPage = targetPage;
 				chapterCSS = chapters[initialChapter].css;
+				
+				// Calculate total pages in background
+				setTimeout(calculateChapterPageCounts, 500);
 			} else {
 				throw new Error('No readable content found in EPUB');
 			}
@@ -95,21 +100,29 @@
 			loading = false;
 		}
 	});
-
+	
 	function goBack() { goto(resolve('/')).then(() => {}); }
+
 	function toggleDarkMode() {
 		darkMode = !darkMode;
 		if (darkMode) { document.documentElement.classList.add('dark'); localStorage.setItem('theme', 'dark'); }
 		else { document.documentElement.classList.remove('dark'); localStorage.setItem('theme', 'light'); }
 	}
+	
+	const logicalChapters = $derived(chapters.filter(c => !c.title.includes('(cont.)')));
+	const showSubtitle = $derived(logicalChapters.length > 1);
+	let isNovelMode = $derived(logicalChapters.length > 1);
 
 	function updatePagination() {
-		if (chapters[currentChapter]?.isCover || (chapters[currentChapter]?.content.length < 1000 && chapters[currentChapter]?.content.includes('<img'))) {
+		if (!isNovelMode) {
+			// Illustrated Mode: Each spine item is exactly one page
 			totalPages = 1;
 			currentPage = 0;
 			isCalculating = false;
 			return;
 		}
+
+		// Novel Mode: Use standard multi-column pagination
 		if (contentContainer && containerWidth > 0) {
 			const scrollWidth = contentContainer.scrollWidth;
 			totalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
@@ -118,8 +131,6 @@
 				jumpToLastPage = false; 
 			}
 			
-			// Stay in calculating state for a tiny bit longer to ensure
-			// the snap-to-page transform is applied before we show the content
 			setTimeout(() => {
 				isCalculating = false;
 			}, 100);
@@ -127,7 +138,7 @@
 	}
 
 	$effect(() => {
-		const timer = setTimeout(updatePagination, 100, chapters[currentChapter], contentContainer, containerWidth);
+		const timer = setTimeout(updatePagination, 100, chapters[currentChapter], contentContainer, containerWidth, isNovelMode);
 		return () => clearTimeout(timer);
 	});
 
@@ -152,7 +163,9 @@
 		
 		// Run in chunks to avoid blocking the main thread too much
 		for (let i = 0; i < chapters.length; i++) {
-			if (chapters[i].isCover) {
+			const content = chapters[i].content;
+			// Speed up: Illustrated pages and covers are always exactly 1 page
+			if (chapters[i].isCover || content.includes('epub-illustrated-page') || (content.length < 1000 && content.includes('<img'))) {
 				counts.push(1);
 				total += 1;
 				continue;
@@ -265,14 +278,29 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div class="flex h-screen flex-col bg-background font-sans">
-	<header class="flex items-center justify-between border-b border-border bg-background px-6 py-4 shadow-sm">
-		<Button variant="ghost" onclick={goBack} class="flex items-center gap-2"><ChevronLeft class="h-4 w-4" /></Button>
-		<div class="max-w-xs text-left sm:text-center">
-			<h1 class="truncate text-xl font-semibold text-foreground">{bookTitle}</h1>
-			{#if chapters[currentChapter]}<p class="truncate text-xs text-muted-foreground">{chapters[currentChapter]?.title}</p>{/if}
+	<header class="flex items-center gap-2 border-b border-border bg-background px-4 py-2 shadow-sm shrink-0 h-14">
+		<Button variant="ghost" size="icon" onclick={goBack} class="shrink-0">
+			<ChevronLeft class="h-5 w-5" />
+		</Button>
+		
+		<div class="flex-1 min-w-0 text-left px-2">
+			{#if loading}
+				<div class="space-y-1.5">
+					<div class="h-3 w-32 animate-pulse rounded bg-muted"></div>
+					<div class="h-2 w-20 animate-pulse rounded bg-muted/60"></div>
+				</div>
+			{:else}
+				<h1 class="truncate text-sm font-bold text-foreground leading-tight">{bookTitle}</h1>
+				{#if showSubtitle && chapters[currentChapter]}
+					<p class="truncate text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5 font-medium">
+						{chapters[currentChapter]?.title}
+					</p>
+				{/if}
+			{/if}
 		</div>
-		<Button variant="outline" size="icon" class="rounded-full cursor-pointer" onclick={toggleDarkMode}>
-			{#if darkMode}<Sun size={20} />{:else}<Moon size={20} />{/if}
+
+		<Button variant="ghost" size="icon" class="shrink-0 rounded-full" onclick={toggleDarkMode}>
+			{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
 		</Button>
 	</header>
 
@@ -322,7 +350,9 @@
 										<div 
 											bind:this={contentContainer} 
 											class="h-full prose prose-lg max-w-none" 
-											style="column-width: {containerWidth ? `calc(${containerWidth}px - 4rem)` : '100%'}; column-gap: 4rem; column-fill: auto;"
+											class:is-novel-layout={isNovelMode}
+											class:is-illustrated-layout={!isNovelMode}
+											style="column-width: {isNovelMode ? `calc(${containerWidth}px - 4rem)` : 'none'}; column-gap: {isNovelMode ? '4rem' : '0'}; column-fill: auto;"
 										>
 											{@html chapters[currentChapter].content}
 										</div>
@@ -336,30 +366,79 @@
 	</main>
 
 	<footer class="border-t border-border bg-background px-6 py-3 text-center">
-		<p class="text-sm text-muted-foreground">
-			Page {currentPage + 1} / {totalPages}
-		</p>
+		<div class="flex items-center justify-center gap-4">
+			{#if !showSubtitle}
+				<!-- Single chapter book: show global progress -->
+				<p class="text-sm text-muted-foreground font-medium">
+					Page {pagesRead} of {totalBookPages > 0 ? totalBookPages : '...'}
+				</p>
+				{#if totalBookPages > 0}
+					<div class="w-32 h-1.5 bg-muted rounded-full overflow-hidden hidden sm:block">
+						<div class="h-full bg-[#0D5C63] transition-all duration-300" style="width: {(pagesRead / totalBookPages) * 100}%"></div>
+					</div>
+				{/if}
+			{:else}
+				<!-- Multi-chapter book: show per-chapter progress -->
+				<p class="text-sm text-muted-foreground font-medium">
+					Page {currentPage + 1} / {totalPages}
+				</p>
+			{/if}
+		</div>
 	</footer>
 </div>
 
 <style>
-	:global(.prose img) { max-width: 100%; height: auto; display: block; margin: 1rem auto; border-radius: 0.5rem; }
-	:global(.prose .x-ebookmaker-coverpage), :global(.prose .x-ebookmaker-cover), :global(.cover-container .epub-content) { height: 100% !important; width: 100% !important; display: flex; align-items: center; justify-content: center; padding: 0 !important; margin: 0 !important; }
-	:global(.cover-container img), :global(.cover-container svg) { max-width: 100% !important; max-height: 100% !important; width: auto !important; height: auto !important; object-fit: contain !important; margin: 0 auto !important; display: block !important; }
+	:global(.prose img, .epub-content img) { 
+		max-width: 100%; 
+		max-height: calc(100vh - 200px) !important; 
+		height: auto !important; 
+		width: auto !important;
+		display: block; 
+		margin: 0 auto; 
+		border-radius: 0.5rem; 
+		object-fit: contain;
+	}
+	
+	/* Novel Layout: Standard text flow with columns */
+	:global(.is-novel-layout .epub-content) {
+		height: 100%;
+		color: inherit;
+	}
+
+	/* Illustrated Layout: Full-page centering for drawings */
+	:global(.is-illustrated-layout .epub-content) {
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	:global(.epub-illustrated-page) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		width: 100%;
+		max-height: calc(100vh - 200px) !important;
+		overflow: hidden;
+	}
+
+	:global(.epub-content svg), :global(.epub-illustrated-page img) {
+		max-width: 100% !important;
+		max-height: 100% !important;
+		width: auto !important;
+		height: auto !important;
+	}
+	
 	:global(.prose p) { margin-bottom: 1rem; text-align: justify; }
 	:global(.prose h1, .prose h2, .prose h3) { margin: 1.5rem 0 1rem 0; break-after: avoid; }
 	:global(.prose > *) { break-inside: avoid; }
 	
-	/* Theming: Set base color but allow book CSS to override via specificity */
 	:global(.prose) {
-		color: hsl(var(--foreground));
-	}
-	
-	:global(.epub-content) {
 		color: inherit;
 	}
 
-	/* Force text colors in dark mode to prevent "gray" text from being unreadable */
+	/* Force text colors in dark mode */
 	:global(.dark .prose), :global(.dark .prose *), :global(.dark .epub-content *) {
 		color: hsl(var(--foreground)) !important;
 	}

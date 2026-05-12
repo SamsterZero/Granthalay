@@ -1,18 +1,23 @@
 const DB_NAME = 'EpubReaderDB';
 const STORE_NAME = 'books';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
-export interface BookRecord {
+export interface BookMetadata {
 	id: string;
 	name: string;
 	title: string;
-	cover: string | null;
-	buffer: ArrayBuffer;
+	author?: string;
+	description?: string;
+	cover: string | Blob | null;
 	createdAt: number;
-	progress?: number; // 0 to 1
+	progress?: number;
 	currentChapter?: number;
 	currentPage?: number;
 	totalBookPages?: number;
+}
+
+export interface BookRecord extends BookMetadata {
+	buffer: ArrayBuffer;
 }
 
 function getDB(): Promise<IDBDatabase> {
@@ -28,7 +33,11 @@ function getDB(): Promise<IDBDatabase> {
 
 			if (!db.objectStoreNames.contains(STORE_NAME)) {
 				db.createObjectStore(STORE_NAME);
-			} else if (oldVersion === 1) {
+			}
+			if (!db.objectStoreNames.contains('bookContents')) {
+				db.createObjectStore('bookContents');
+			}
+			else if (oldVersion === 1) {
 				// v1 store exists, no structural changes needed
 				// Migration happens lazily in getAllBooks
 			}
@@ -75,68 +84,71 @@ export async function saveBook(
 	buffer: ArrayBuffer,
 	name: string,
 	title: string,
-	cover: string | null
+	cover: string | Blob | null
 ): Promise<string> {
 	await migrateOldBook();
 
 	const db = await getDB();
 	const id = crypto.randomUUID();
-	const record: BookRecord = {
+	
+	const metadata: BookMetadata = {
 		id,
 		name,
 		title,
 		cover,
-		buffer,
 		createdAt: Date.now()
 	};
 
 	return new Promise((resolve, reject) => {
-		const transaction = db.transaction(STORE_NAME, 'readwrite');
-		const store = transaction.objectStore(STORE_NAME);
-		const request = store.put(record, id);
-		request.onsuccess = () => resolve(id);
-		request.onerror = () => reject(request.error);
+		const transaction = db.transaction([STORE_NAME, 'bookContents'], 'readwrite');
+		const metaStore = transaction.objectStore(STORE_NAME);
+		const contentStore = transaction.objectStore('bookContents');
+		
+		metaStore.put(metadata, id);
+		contentStore.put(buffer, id);
+
+		transaction.oncomplete = () => resolve(id);
+		transaction.onerror = () => reject(transaction.error);
 	});
 }
 
-export async function getAllBooks(): Promise<BookRecord[]> {
+export async function getAllBooks(): Promise<BookMetadata[]> {
 	await migrateOldBook();
 
 	const db = await getDB();
 	return new Promise((resolve, reject) => {
 		const transaction = db.transaction(STORE_NAME, 'readonly');
 		const store = transaction.objectStore(STORE_NAME);
-		const books: BookRecord[] = [];
-
-		const request = store.openCursor();
+		const request = store.getAll();
 		request.onsuccess = () => {
-			const cursor = request.result;
-			if (cursor) {
-				const value = cursor.value as BookRecord;
-				// Filter: must have id and buffer (skip old entries without these)
-				if (value && value.id && value.buffer) {
-					books.push(value);
-				}
-				cursor.continue();
-			} else {
-				books.sort((a, b) => b.createdAt - a.createdAt);
-				resolve(books);
-			}
+			const results = request.result as BookMetadata[];
+			resolve(results.sort((a, b) => b.createdAt - a.createdAt));
 		};
 		request.onerror = () => reject(request.error);
 	});
 }
 
 export async function getBookById(id: string): Promise<BookRecord | null> {
-	if (id === 'default') return null;
-
 	const db = await getDB();
 	return new Promise((resolve, reject) => {
-		const transaction = db.transaction(STORE_NAME, 'readonly');
-		const store = transaction.objectStore(STORE_NAME);
-		const request = store.get(id);
-		request.onsuccess = () => resolve(request.result || null);
-		request.onerror = () => reject(request.error);
+		const transaction = db.transaction([STORE_NAME, 'bookContents'], 'readonly');
+		const metaStore = transaction.objectStore(STORE_NAME);
+		const contentStore = transaction.objectStore('bookContents');
+
+		const getMeta = metaStore.get(id);
+		const getContent = contentStore.get(id);
+
+		transaction.oncomplete = () => {
+			if (!getMeta.result) {
+				resolve(null);
+			} else {
+				resolve({
+					...getMeta.result,
+					buffer: getContent.result
+				});
+			}
+		};
+		transaction.onerror = () => reject(transaction.error);
 	});
 }
 
@@ -192,7 +204,10 @@ export async function getBook(): Promise<{ buffer: ArrayBuffer; name: string } |
 	await migrateOldBook();
 	const books = await getAllBooks();
 	if (books.length > 0) {
-		return { buffer: books[0].buffer, name: books[0].name };
+		const fullBook = await getBookById(books[0].id);
+		if (fullBook) {
+			return { buffer: fullBook.buffer, name: fullBook.name };
+		}
 	}
 	return null;
 }

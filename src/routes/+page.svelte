@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { saveBook, getAllBooks, deleteBookById, type BookRecord } from '$lib/db';
+	import { saveBook, getAllBooks, deleteBookById, type BookMetadata } from '$lib/db';
 	import { EpubEngine } from '$lib/epub/engine';
 	import { Moon, Sun, Grid2x2, Grid3x3, Download, Plus } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -18,8 +18,8 @@
 	type GridMode = 'compact' | 'comfortable';
 
 	let fileInput = $state<HTMLInputElement | undefined>();
-	let books = $state<BookRecord[]>([]);
-	let defaultBook = $state<{ title: string; cover: string | null; progress?: number; totalBookPages?: number } | null>(null);
+	let books = $state<BookMetadata[]>([]);
+	let defaultBook = $state<{ title: string; cover: string | Blob | null; progress?: number; totalBookPages?: number } | null>(null);
 	let loading = $state(true);
 	let darkMode = $state(false);
 	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
@@ -54,7 +54,7 @@
 			if (response.ok) {
 				const buffer = await response.arrayBuffer();
 				const engine = new EpubEngine(buffer);
-				await engine.init();
+				await engine.init(true); // metadataOnly mode
 				const meta = engine.metadata;
 				const stored = localStorage.getItem('book-progress-default');
 				let progress = 0;
@@ -94,7 +94,7 @@
 		if (!file || !file.name.endsWith('.epub')) return;
 		const buffer = await file.arrayBuffer();
 		const engine = new EpubEngine(buffer);
-		await engine.init();
+		await engine.init(true); // metadataOnly mode
 		const meta = engine.metadata;
 		await saveBook(buffer, file.name, meta.title, meta.cover);
 		books = await getAllBooks();

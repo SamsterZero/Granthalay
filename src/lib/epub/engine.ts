@@ -1,6 +1,5 @@
 import JSZip from 'jszip';
 import sanitizeHtml from 'sanitize-html';
-import { SvelteMap } from 'svelte/reactivity';
 
 export interface EpubChapter {
 	title: string;
@@ -9,21 +8,24 @@ export interface EpubChapter {
 	css: string;
 	isCover?: boolean;
 	isFrontmatter?: boolean;
+	error?: string;
 }
 
 export interface EpubMetadata {
 	title: string;
 	author: string;
 	description: string;
-	cover: string | null;
+	cover: string | Blob | null;
 }
 
 export class EpubEngine {
 	private epub: JSZip | null = null;
 	private basePath: string = '';
-	private manifestMap = new SvelteMap<string, { href: string; mediaType: string; properties?: string }>();
-	private tocTitles = new SvelteMap<string, string>();
-	private cssMap = new SvelteMap<string, string>();
+	private manifestMap = new Map<string, { href: string; mediaType: string; properties?: string }>();
+	private tocTitles = new Map<string, string>();
+	private cssMap = new Map<string, string>();
+	private blobUrls: string[] = [];
+	private textStartId: string | null = null;
 	
 	public metadata: EpubMetadata = {
 		title: 'Unknown Book',
@@ -34,7 +36,18 @@ export class EpubEngine {
 
 	constructor(private arrayBuffer: ArrayBuffer) {}
 
-	async init() {
+	public destroy() {
+		this.blobUrls.forEach(url => URL.revokeObjectURL(url));
+		this.blobUrls = [];
+	}
+
+	private createObjectURL(blob: Blob): string {
+		const url = URL.createObjectURL(blob);
+		this.blobUrls.push(url);
+		return url;
+	}
+
+	async init(metadataOnly = false) {
 		this.epub = await JSZip.loadAsync(this.arrayBuffer);
 
 		const containerXml = await this.epub!.file('META-INF/container.xml')?.async('string');
@@ -56,6 +69,27 @@ export class EpubEngine {
 		this.metadata.author = opfDoc.querySelector('creator')?.textContent || '';
 		this.metadata.description = opfDoc.querySelector('description')?.textContent || '';
 
+		// CRITICAL: basePath must be set BEFORE resolving guide/TOC/CSS paths
+		this.basePath = rootfilePath.substring(0, rootfilePath.lastIndexOf('/') + 1);
+		
+		// Identify where the "actual" content starts (EPUB 2 Guide)
+		const guideText = opfDoc.querySelector('reference[type="text"]');
+		if (guideText) {
+			const guideHref = guideText.getAttribute('href')?.split('#')[0];
+			if (guideHref) {
+				// Normalize path relative to the OPF file's location
+				this.textStartId = this.resolvePath(rootfilePath, guideHref);
+			}
+		}
+
+		// Cover Extraction
+		await this.extractCover(opfDoc);
+		
+		if (metadataOnly) return;
+		
+		await this.loadTOC(opfDoc);
+		await this.loadCSS(opfDoc);
+
 		const spineItems = opfDoc.querySelectorAll('spine itemref');
 		const manifestItems = opfDoc.querySelectorAll('manifest item');
 		
@@ -67,19 +101,18 @@ export class EpubEngine {
 			if (id && href) this.manifestMap.set(id, { href, mediaType, properties });
 		});
 
-		this.basePath = rootfilePath.substring(0, rootfilePath.lastIndexOf('/') + 1);
-		
 		// Cover Extraction
 		await this.extractCover(opfDoc);
 		
 		await this.loadTOC(opfDoc);
 		await this.loadCSS(opfDoc);
 
-		const spineInfos: Array<{ href: string; mediaType: string }> = [];
+		const spineInfos: Array<{ href: string; mediaType: string; linear: boolean }> = [];
 		for (const item of spineItems) {
 			const idref = item.getAttribute('idref');
+			const linear = item.getAttribute('linear') !== 'no';
 			if (idref && this.manifestMap.has(idref)) {
-				spineInfos.push(this.manifestMap.get(idref)!);
+				spineInfos.push({ ...this.manifestMap.get(idref)!, linear });
 			}
 		}
 
@@ -96,23 +129,30 @@ export class EpubEngine {
 				const tocContent = await this.epub!.file(tocPath)?.async('string');
 				if (tocContent) {
 					const tocDoc = parser.parseFromString(tocContent, 'text/html');
-					const links = tocDoc.querySelectorAll('nav[epub\\:type="toc"] a, nav[role="doc-toc"] a, nav a');
-					links.forEach((a: Element) => {
+					// Only get top-level links from the primary TOC list
+					const tocNav = tocDoc.querySelector('nav[epub\\:type="toc"], nav[role="doc-toc"], nav');
+					const links = tocNav ? tocNav.querySelectorAll(':scope > ol > li > a, :scope > ul > li > a') : [];
+					
+					// If we didn't find top-level links with strict selectors, fallback to first-level 'a' tags
+					const finalLinks = links.length > 0 ? links : tocDoc.querySelectorAll('nav a, ol > li > a');
+
+					finalLinks.forEach((a: Element) => {
 						const href = a.getAttribute('href');
 						const title = a.textContent?.trim();
 						if (href && title) {
-							const tocBase = tocHref.substring(0, tocHref.lastIndexOf('/') + 1);
-							const resolvedHref = (href.startsWith('/') ? href.substring(1) : tocBase + href).replace(/\\/g, '/');
-							const cleanHref = resolvedHref.split('#')[0];
+							const resolvedPath = this.resolvePath(tocPath, href);
+							const cleanHref = resolvedPath.split('#')[0];
+							
 							if (!this.tocTitles.has(cleanHref)) this.tocTitles.set(cleanHref, title);
-							this.tocTitles.set(resolvedHref, title);
+							this.tocTitles.set(resolvedPath, title);
 						}
 					});
 				}
 			}
 		}
 
-		if (this.tocTitles.size === 0) {
+		// Fallback to NCX if EPUB3 TOC is missing or sparse
+		if (this.tocTitles.size < 3) {
 			const spineToc = opfDoc.querySelector('spine');
 			const ncxId = spineToc?.getAttribute('toc');
 			let ncxHref = ncxId ? this.manifestMap.get(ncxId)?.href || null : null;
@@ -124,24 +164,43 @@ export class EpubEngine {
 			}
 
 			if (ncxHref) {
-				const ncxContent = await this.epub!.file(this.basePath + ncxHref)?.async('string');
+				const ncxPath = this.basePath + ncxHref;
+				const ncxContent = await this.epub!.file(ncxPath)?.async('string');
 				if (ncxContent) {
 					const ncxDoc = parser.parseFromString(ncxContent, 'application/xml');
-					const navPoints = ncxDoc.querySelectorAll('navPoint');
-					navPoints.forEach((np: Element) => {
-						const label = np.querySelector('navLabel text')?.textContent?.trim();
-						const src = np.querySelector('content')?.getAttribute('src');
+					// Only get top-level navPoints from the navMap
+					const navMap = ncxDoc.querySelector('navMap');
+					const navPoints = navMap ? navMap.querySelectorAll(':scope > navPoint') : ncxDoc.getElementsByTagName('navPoint');
+					
+					Array.from(navPoints).forEach((np: Element) => {
+						const labelEl = np.getElementsByTagName('text')[0];
+						const contentEl = np.getElementsByTagName('content')[0];
+						const label = labelEl?.textContent?.trim();
+						const src = contentEl?.getAttribute('src');
+						
 						if (label && src) {
-							const ncxBase = ncxHref!.substring(0, ncxHref!.lastIndexOf('/') + 1);
-							const resolvedSrc = (src.startsWith('/') ? src.substring(1) : ncxBase + src).replace(/\\/g, '/');
-							const cleanSrc = resolvedSrc.split('#')[0];
-							if (!this.tocTitles.has(cleanSrc)) this.tocTitles.set(cleanSrc, label);
-							this.tocTitles.set(resolvedSrc, label);
+							const resolvedPath = this.resolvePath(ncxPath, src);
+							const cleanHref = resolvedPath.split('#')[0];
+							
+							if (!this.tocTitles.has(cleanHref)) this.tocTitles.set(cleanHref, label);
+							this.tocTitles.set(resolvedPath, label);
 						}
 					});
 				}
 			}
 		}
+	}
+
+	private resolvePath(currentPath: string, relativePath: string): string {
+		if (relativePath.startsWith('data:') || relativePath.includes('://')) return relativePath;
+		const baseParts = currentPath.split('/').filter(p => p && p !== '.');
+		baseParts.pop(); // Remove the filename
+		const relParts = relativePath.split('/').filter(p => p && p !== '.');
+		for (const part of relParts) {
+			if (part === '..') baseParts.pop();
+			else baseParts.push(part);
+		}
+		return baseParts.join('/');
 	}
 
 	private async loadCSS(opfDoc: Document) {
@@ -149,190 +208,197 @@ export class EpubEngine {
 		for (const cssItem of cssItems) {
 			const href = cssItem.getAttribute('href');
 			if (href) {
-				const cssContent = await this.epub!.file(this.basePath + href)?.async('string');
-				if (cssContent) {
-					const processedCSS = await this.processCSS(cssContent);
-					this.cssMap.set(href, processedCSS);
+				const fullPath = this.basePath + href;
+				try {
+					const cssContent = await this.epub!.file(fullPath)?.async('string');
+					if (cssContent) {
+						const processedCSS = await this.processCSS(cssContent, fullPath);
+						this.cssMap.set(fullPath, processedCSS);
+					}
+				} catch (e) {
+					console.error(`[EpubEngine] Failed to load CSS: ${fullPath}`, e);
 				}
 			}
 		}
 	}
 
-	private async processCSS(cssContent: string): Promise<string> {
+	private async processCSS(cssContent: string, cssFilePath: string): Promise<string> {
 		const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g;
-		const urls: string[] = [];
-		const replacements: string[] = [];
-		let match;
-		while ((match = urlRegex.exec(cssContent)) !== null) {
-			if (!match[1].startsWith('data:') && !match[1].startsWith('http')) {
-				urls.push(match[1]);
-			}
-		}
+		const replacements = new Map<string, string>();
+		const matches = Array.from(cssContent.matchAll(urlRegex));
 		
-		await Promise.all(urls.map(async (resourceUrl) => {
-			const fullPath = (resourceUrl.startsWith('/') ? resourceUrl.substring(1) : this.basePath + resourceUrl.replace(/^\.\//, '')).replace(/\\/g, '/');
-			const resourceFile = this.epub!.file(fullPath);
-			if (resourceFile) {
-				const blob = await resourceFile.async('blob');
-				replacements.push(`url("${URL.createObjectURL(blob)}")`);
-			} else {
-				replacements.push(`url("${resourceUrl}")`);
+		await Promise.all(matches.map(async (match) => {
+			const resourceUrl = match[1];
+			if (resourceUrl.startsWith('data:') || resourceUrl.startsWith('http')) return;
+			
+			const fullPath = this.resolvePath(cssFilePath, resourceUrl);
+			try {
+				const resourceFile = this.epub!.file(fullPath);
+				if (resourceFile) {
+					const blob = await resourceFile.async('blob');
+					replacements.set(resourceUrl, `url("${this.createObjectURL(blob)}")`);
+				}
+			} catch (e) {
+				console.warn(`[EpubEngine] CSS resource failed: ${fullPath}`, e);
 			}
 		}));
 		
-		let urlIndex = 0;
-		return cssContent.replace(urlRegex, () => replacements[urlIndex++] || '');
+		return cssContent.replace(urlRegex, (match, url) => replacements.get(url) || match);
 	}
 
-	async parseChapters(spineInfos: Array<{ href: string; mediaType: string }>): Promise<EpubChapter[]> {
+	async parseChapters(spineInfos: Array<{ href: string; mediaType: string; linear?: boolean }>): Promise<EpubChapter[]> {
 		const chapters: EpubChapter[] = [];
 		const parser = new DOMParser();
+		let hasReachedTextStart = false;
 
-		for (const { href, mediaType } of spineInfos) {
+		// Track current logical title for "continued" grouping
+		let currentLogicalTitle = 'Frontmatter';
+
+		for (const { href, mediaType, linear } of spineInfos) {
+			if (linear === false) continue;
+
 			const fullPath = this.basePath + href;
-			const normalizedHref = href.replace(/\\/g, '/');
+			const normalizedHref = fullPath.replace(/\\/g, '/');
 			
-			if (mediaType.startsWith('image/')) {
-				const imageFile = this.epub!.file(fullPath);
-				if (imageFile) {
-					const blob = await imageFile.async('blob');
-					const url = URL.createObjectURL(blob);
-					const title = this.tocTitles.get(normalizedHref) || 'Image';
-					const isCover = title.toLowerCase().includes('cover') || chapters.length === 0;
-					
-					chapters.push({
-						title,
-						href: normalizedHref,
-						content: `<div class="epub-content x-ebookmaker-cover"><img src="${url}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" /></div>`,
-						css: '.epub-content { display: flex; align-items: center; justify-content: center; height: 100%; }',
-						isCover,
-						isFrontmatter: true
-					});
-				}
-				continue;
+			if (this.textStartId && normalizedHref === this.textStartId) {
+				hasReachedTextStart = true;
+			}
+			
+			// Get the TOC title for this physical file
+			const tocTitle = this.tocTitles.get(normalizedHref);
+			if (tocTitle) {
+				currentLogicalTitle = tocTitle;
 			}
 
-			const content = await this.epub!.file(fullPath)?.async('string');
-			if (content) {
-				const contentChapters = this.extractChaptersFromContent(content, href);
-				for (const contentChapter of contentChapters) {
-					const contentDoc = parser.parseFromString(contentChapter.content, 'text/html');
-					let title = contentChapter.title;
-					if (this.tocTitles.has(contentChapter.href)) {
-						title = this.tocTitles.get(contentChapter.href)!;
-					} else if (this.tocTitles.has(href)) {
-						title = this.tocTitles.get(href)!;
+			try {
+				if (mediaType.startsWith('image/')) {
+					const imageFile = this.epub!.file(fullPath);
+					if (imageFile) {
+						const blob = await imageFile.async('blob');
+						const url = this.createObjectURL(blob);
+						const isCover = currentLogicalTitle.toLowerCase().includes('cover') || chapters.length === 0;
+						
+						chapters.push({
+							title: chapters.some(c => c.title === currentLogicalTitle) ? `${currentLogicalTitle} (cont.)` : currentLogicalTitle,
+							href: normalizedHref,
+							content: `<div class="epub-content epub-illustrated-page">
+								<img src="${url}" style="max-width: 100%; height: auto; display: block; margin: 0 auto;" />
+							</div>`,
+							css: '',
+							isCover,
+							isFrontmatter: !hasReachedTextStart && chapters.length === 0
+						});
 					}
+				} else {
+					const content = await this.epub!.file(fullPath)?.async('string');
+					if (content) {
+						const doc = parser.parseFromString(content, 'text/html');
+						
+						// Identify cover files
+						const titleLower = currentLogicalTitle.toLowerCase();
+						const isFirstChapter = chapters.length === 0;
+						const isCover = !!(titleLower.includes('cover') || (isFirstChapter && doc.querySelector('svg, img') && !titleLower.includes('chapter')));
 
-					const titleLower = title.toLowerCase();
-					const isCover = titleLower.includes('cover') || 
-									(chapters.length === 0 && contentDoc.querySelector('svg, img') !== null && !titleLower.includes('chapter'));
-					
-					const isFrontmatter = isCover || 
-										  titleLower.includes('title page') || 
-										  titleLower.includes('half title') ||
-										  titleLower.includes('dedication') ||
-										  titleLower.includes('preface') ||
-										  titleLower.includes('author\'s note') ||
-										  titleLower.includes('introduction');
+						await this.resolveResources(doc, fullPath);
 
-					await this.resolveResources(contentDoc);
+						// Extract and scope CSS
+						const css = this.extractAndScopeCSS(doc, fullPath);
 
-					const cssLinks = contentDoc.querySelectorAll('link[rel="stylesheet"]');
-					let combinedCSS = '';
-					for (const cssLink of cssLinks) {
-						const cssHref = cssLink.getAttribute('href');
-						if (cssHref && this.cssMap.has(cssHref)) {
-							const css = this.cssMap.get(cssHref);
-							if (css) combinedCSS += css + '\n';
-						}
+						// Sanitize content
+						const sanitized = sanitizeHtml(doc.body.innerHTML, {
+							allowedTags: [
+								'p', 'br', 'strong', 'em', 'u', 'i', 'b', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 
+								'ul', 'ol', 'li', 'blockquote', 'img', 'svg', 'image', 'div', 'span',
+								'table', 'tr', 'td', 'th', 'thead', 'tbody', 'tfoot', 'caption',
+								'figure', 'figcaption', 'ruby', 'rt', 'rp', 'section', 'article', 'main'
+							],
+							allowedAttributes: { 
+								'*': ['class', 'id', 'style'], 
+								'img': ['src', 'alt'], 
+								'svg': ['viewBox', 'preserveAspectRatio', 'width', 'height', 'version', 'xmlns', 'xmlns:xlink', 'x', 'y'],
+								'image': ['xlink:href', 'href', 'width', 'height', 'x', 'y', 'preserveAspectRatio']
+							},
+							allowedSchemes: ['data', 'blob', 'http', 'https']
+						});
+
+						chapters.push({
+							title: chapters.some(c => c.title === currentLogicalTitle) ? `${currentLogicalTitle} (cont.)` : currentLogicalTitle,
+							href: normalizedHref,
+							content: `<div class="epub-content">${sanitized}</div>`,
+							css: css,
+							isCover,
+							isFrontmatter: !hasReachedTextStart && chapters.length === 0
+						});
 					}
-
-					const rawContent = contentDoc.body?.innerHTML || '';
-					const typographyStyles = `
-						.epub-content { font-family: Georgia, serif; line-height: 1.6; font-size: 16px; color: inherit; max-width: 100%; overflow-wrap: break-word; } 
-						.epub-content img { max-width: 100%; height: auto; display: block; margin: 1rem auto; }
-						.epub-content p { margin-bottom: 1.2em; text-align: justify; }
-						.epub-content h1, .epub-content h2, .epub-content h3 { color: inherit; margin-top: 1.5em; margin-bottom: 0.5em; }
-					`;
-
-					let cssForChapter = typographyStyles;
-					if (combinedCSS) {
-						const scopedCSS = combinedCSS.split('}').map(rule => {
-							const parts = rule.split('{');
-							if (parts.length !== 2) return rule;
-							const selectors = parts[0];
-							const declaration = parts[1];
-							const scopedSelectors = selectors.split(',').map(s => s.trim() ? `.epub-content ${s.trim()}` : '').filter(Boolean).join(', ');
-							return `${scopedSelectors} { ${declaration} }`;
-						}).join('\n');
-						cssForChapter = scopedCSS + typographyStyles;
-					}
-
-					const processedContent = sanitizeHtml(`<div class="epub-content">${rawContent}</div>`, {
-						allowedTags: ['p', 'br', 'strong', 'em', 'u', 'i', 'b', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'img', 'svg', 'image', 'div', 'span'],
-						allowedAttributes: { '*': ['class', 'id', 'style'], img: ['src'], svg: ['viewBox'], image: ['xlink:href', 'href'] },
-						allowedSchemes: ['data', 'blob']
-					});
-
-					chapters.push({ title, href: contentChapter.href, content: processedContent, css: cssForChapter, isCover, isFrontmatter });
 				}
+			} catch (e) {
+				console.error(`[EpubEngine] Failed to parse item: ${fullPath}`, e);
 			}
 		}
-		return chapters;
+
+		// Final pass: Global styles and safety
+		const globalStyles = `
+			.epub-content { font-family: Georgia, serif; line-height: 1.6; font-size: 16px; color: inherit; }
+			.epub-content img { max-width: 100%; height: auto; display: block; margin: 1rem auto; }
+			.epub-content svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+		`;
+
+		return chapters.map(ch => ({
+			...ch,
+			css: globalStyles + ch.css
+		}));
 	}
 
-	private extractChaptersFromContent(content: string, href: string) {
-		const parser = new DOMParser();
-		const doc = parser.parseFromString(content, 'text/html');
-		const chapters: Array<{ title: string; href: string; content: string }> = [];
-		const headings = doc.querySelectorAll('h1, h2');
+	private extractAndScopeCSS(doc: Document, fullPath: string): string {
+		const cssLinks = doc.querySelectorAll('link[rel="stylesheet"]');
+		let combinedCSS = '';
+		for (const cssLink of cssLinks) {
+			const cssHref = cssLink.getAttribute('href');
+			if (cssHref) {
+				const fullCssPath = this.resolvePath(fullPath, cssHref);
+				const css = this.cssMap.get(fullCssPath);
+				if (css) combinedCSS += css + '\n';
+			}
+		}
+		return combinedCSS ? this.scopeCSS(combinedCSS, '.epub-content') : '';
+	}
+
+	private splitByAnchors(doc: Document, anchors: Array<{ anchor: string, title: string }>) {
+		const results: Array<{ title: string, anchor: string, doc: Document }> = [];
 		
-		if (headings.length > 1) {
-			for (let i = 0; i < headings.length; i++) {
-				const heading = headings[i];
-				const title = heading.textContent?.trim();
-				if (title) {
-					const tempDiv = document.createElement('div');
-					let nextElement = heading.nextSibling;
-					const currentLevel = parseInt(heading.tagName.substring(1));
-					while (nextElement) {
-						if (nextElement.nodeType === Node.ELEMENT_NODE) {
-							const element = nextElement as Element;
-							if (element.tagName.match(/^H[1-2]$/)) {
-								const elementLevel = parseInt(element.tagName.substring(1));
-								if (elementLevel <= currentLevel) break;
-							}
-						}
-						tempDiv.appendChild(nextElement.cloneNode(true));
-						nextElement = nextElement.nextSibling;
-					}
-					const chapterDiv = document.createElement('div');
-					chapterDiv.appendChild(heading.cloneNode(true));
-					chapterDiv.innerHTML += tempDiv.innerHTML;
-					chapters.push({ title, href: `${href}#${heading.id || ''}`, content: chapterDiv.innerHTML });
+		for (let i = 0; i < anchors.length; i++) {
+			const current = anchors[i];
+			const next = anchors[i + 1];
+			
+			const newDoc = document.implementation.createHTMLDocument();
+			const startEl = doc.getElementById(current.anchor);
+			
+			if (startEl) {
+				let node: Node | null = startEl;
+				while (node) {
+					if (next && node instanceof Element && node.id === next.anchor) break;
+					newDoc.body.appendChild(node.cloneNode(true));
+					node = node.nextSibling;
 				}
 			}
-		} else {
-			chapters.push({ 
-				title: doc.querySelector('title')?.textContent?.trim() || doc.querySelector('h1, h2, h3')?.textContent?.trim() || `Chapter`, 
-				href, 
-				content: doc.body?.innerHTML || content 
-			});
+			
+			results.push({ title: current.title, anchor: current.anchor, doc: newDoc });
 		}
-		return chapters;
+		
+		return results;
 	}
 
-	private async resolveResources(doc: Document) {
+
+	private async resolveResources(doc: Document, contentFilePath: string) {
 		const images = doc.querySelectorAll('img');
 		for (const img of images) {
 			const src = img.getAttribute('src');
 			if (src) {
-				const fullImagePath = (src.startsWith('/') ? src.substring(1) : this.basePath + src.replace(/^\.\//, '')).replace(/\\/g, '/');
+				const fullImagePath = this.resolvePath(contentFilePath, src);
 				const imageFile = this.epub!.file(fullImagePath);
 				if (imageFile) {
 					const imageBlob = await imageFile.async('blob');
-					img.setAttribute('src', URL.createObjectURL(imageBlob));
+					img.setAttribute('src', this.createObjectURL(imageBlob));
 				}
 			}
 		}
@@ -341,11 +407,11 @@ export class EpubEngine {
 		for (const svgImg of svgImages) {
 			const hrefAttr = svgImg.getAttribute('xlink:href') || svgImg.getAttribute('href');
 			if (hrefAttr) {
-				const fullImagePath = (hrefAttr.startsWith('/') ? hrefAttr.substring(1) : this.basePath + hrefAttr.replace(/^\.\//, '')).replace(/\\/g, '/');
+				const fullImagePath = this.resolvePath(contentFilePath, hrefAttr);
 				const imageFile = this.epub!.file(fullImagePath);
 				if (imageFile) {
 					const imageBlob = await imageFile.async('blob');
-					const imageUrl = URL.createObjectURL(imageBlob);
+					const imageUrl = this.createObjectURL(imageBlob);
 					svgImg.setAttribute('xlink:href', imageUrl);
 					svgImg.setAttribute('href', imageUrl);
 				}
@@ -354,34 +420,75 @@ export class EpubEngine {
 
 		const svgElements = doc.querySelectorAll('svg');
 		for (const svg of svgElements) {
-			svg.removeAttribute('height'); svg.removeAttribute('width'); svg.removeAttribute('viewBox');
-			svg.removeAttribute('preserveAspectRatio');
-			svg.setAttribute('style', 'width: 100%; height: 100%; display: block;');
 			const imageElement = svg.querySelector('image');
 			if (imageElement) {
-				imageElement.removeAttribute('width'); imageElement.removeAttribute('height');
-				imageElement.setAttribute('style', 'width: 100%; height: 100%; object-fit: contain;');
+				// We MUST keep viewBox and preserveAspectRatio for illustrated books to render correctly
+				svg.setAttribute('style', 'max-width: 100%; height: auto; display: block; margin: 0 auto;');
+				
+				// Ensure the image inside fills its container logically
+				if (!imageElement.getAttribute('preserveAspectRatio')) {
+					imageElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+				}
 			}
 		}
 	}
 
 	private async extractCover(opfDoc: Document) {
-		let coverHref: string | null = null;
-		const coverItem = Array.from(this.manifestMap.values()).find(item => item.properties?.includes('cover-image'));
-		if (coverItem) coverHref = coverItem.href;
-		if (!coverHref) {
-			const coverMeta = opfDoc.querySelector('meta[name="cover"]');
-			const coverId = coverMeta?.getAttribute('content');
-			if (coverId && this.manifestMap.has(coverId)) coverHref = this.manifestMap.get(coverId)!.href;
+		// 1. Try standard EPUB 3 manifest properties
+		let coverItem = opfDoc.querySelector('manifest item[properties~="cover-image"]') || 
+						opfDoc.querySelector('manifest item[properties="cover-image"]');
+		
+		// 2. Try common EPUB 2 ID patterns
+		if (!coverItem) {
+			coverItem = opfDoc.querySelector('manifest item[id="cover-image"]') || 
+						opfDoc.querySelector('manifest item[id="cover"]') ||
+						opfDoc.querySelector('manifest item[id="coverimage"]');
 		}
-		if (!coverHref && this.manifestMap.has('cover')) coverHref = this.manifestMap.get('cover')!.href;
+
+		let coverHref = coverItem?.getAttribute('href');
+		
+		// 3. Try metadata meta tag (common in older books)
+		if (!coverHref) {
+			const metaCoverId = opfDoc.querySelector('metadata meta[name="cover"]')?.getAttribute('content');
+			if (metaCoverId) coverHref = this.manifestMap.get(metaCoverId)?.href;
+		}
+
+		// 4. Final Fallback: Look for any image in the manifest that has "cover" in its ID or filename
+		if (!coverHref) {
+			const allItems = Array.from(opfDoc.querySelectorAll('manifest item'));
+			const fallbackItem = allItems.find(item => {
+				const id = item.getAttribute('id')?.toLowerCase() || '';
+				const href = item.getAttribute('href')?.toLowerCase() || '';
+				const type = item.getAttribute('media-type') || '';
+				return type.startsWith('image/') && (id.includes('cover') || href.includes('cover'));
+			});
+			coverHref = fallbackItem?.getAttribute('href');
+		}
+
 		if (coverHref) {
-			const fullPath = this.basePath + coverHref;
-			const imageFile = this.epub!.file(fullPath.replace(/\\/g, '/'));
+			const fullPath = this.resolvePath(this.basePath + 'opf', coverHref);
+			const imageFile = this.epub!.file(fullPath);
 			if (imageFile) {
-				const blob = await imageFile.async('blob');
-				this.metadata.cover = URL.createObjectURL(blob);
+				this.metadata.cover = await imageFile.async('blob');
 			}
 		}
+	}
+
+	private scopeCSS(css: string, scopeSelector: string): string {
+		// NOTE: This is not a full CSS parser. It handles most EPUB stylesheets 
+		// but may misfire on complex attribute selectors or certain minified edge cases.
+		
+		// Remove comments to simplify processing
+		const cleanCSS = css.replace(/\/\*[\s\S]*?\*\//g, '');
+		
+		// This regex finds CSS rules while avoiding @-rules and handling nested blocks roughly
+		// It's still not a full parser, but much more resilient than splitting by '}'
+		return cleanCSS.replace(/([^\r\n,{}]+)(?=[^{]*\{)/g, (match) => {
+			const trimmed = match.trim();
+			if (!trimmed || trimmed.startsWith('@') || trimmed.startsWith('from') || trimmed.startsWith('to') || /^\d/.test(trimmed)) {
+				return match;
+			}
+			return trimmed.split(',').map(s => `${scopeSelector} ${s.trim()}`).join(', ');
+		});
 	}
 }

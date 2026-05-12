@@ -1,42 +1,51 @@
-# sv
+# Samster Reader
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A premium, local-first EPUB reader built with SvelteKit and Svelte 5.
 
-## Creating a project
+![Reader Mockup](https://raw.githubusercontent.com/SamsterZero/reader/main/static/icon-512.png)
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Features
 
-```sh
-# create a new project
-npx sv create my-app
+- **Dual-Mode Layout**: Automatically switches between multi-column pagination for novels and "Fit-to-Screen" mode for illustrated books (e.g., Diary of a Wimpy Kid).
+- **High-Fidelity Rendering**: Advanced SVG support with coordinate preservation (viewBox) and real-time resource resolution for all book assets.
+- **Local-First**: All your books stay in your browser using IndexedDB. No accounts, no tracking.
+- **Modern UI**: Clean, aesthetic interface with dark mode, skeleton loaders, and smooth transitions.
+- **Smart Progress**: Tracks position at both the chapter and global book level, with a dedicated "Resume/Start" workflow.
+- **PWA**: Installable as a native app on iOS, Android, and Desktop.
+
+## Tech Stack
+
+- **Framework**: SvelteKit 2.0 (Svelte 5 Runes)
+- **Database**: Dexie.js (IndexedDB)
+- **Styling**: Vanilla CSS + Tailwind Typography
+- **Icons**: Lucide Svelte
+
+## Getting Started
+
+### Development
+
+```bash
+# Install dependencies
+bun install
+
+# Run dev server
+bun run dev
 ```
 
-To recreate this project with the same configuration:
+### Building for Production
 
-```sh
-# recreate this project
-bun x sv@0.15.3 create --template minimal --types ts --add prettier eslint tailwindcss="plugins:typography,forms" --install bun reader
+```bash
+bun run build
 ```
 
-## Developing
+## Documentation
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Detailed specifications can be found in the `/spec` directory:
 
-```sh
-npm run dev
+- [Architecture](./spec/architecture.md)
+- [Features](./spec/features.md)
+- [Data Model](./spec/data_model.md)
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+## License
 
-## Building
-
-To create a production version of your app:
-
-```sh
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+MIT

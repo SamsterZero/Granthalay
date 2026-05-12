@@ -6,13 +6,25 @@
 	interface Props {
 		id: string;
 		title: string;
-		cover: string | null;
+		cover: string | Blob | null;
 		progress?: number;
 		onOpen: (id: string) => void;
 		onDelete?: (id: string) => void;
 	}
 
 	let { id, title, cover, progress, onOpen, onDelete }: Props = $props();
+	let coverUrl = $state<string | null>(null);
+
+	$effect(() => {
+		if (cover instanceof Blob) {
+			const url = URL.createObjectURL(cover);
+			coverUrl = url;
+			return () => URL.revokeObjectURL(url);
+		} else {
+			coverUrl = cover as string | null;
+			return () => {};
+		}
+	});
 
 	function getInitials(text: string): string {
 		return text.charAt(0).toUpperCase();
@@ -34,10 +46,10 @@
 		{/if}
 
 		<!-- Cover Image -->
-		{#if cover}
+		{#if coverUrl}
 			<div
 				class="absolute inset-0 bg-cover bg-center bg-no-repeat"
-				style="background-image: url({cover})"
+				style="background-image: url({coverUrl})"
 			></div>
 		{:else}
 			<div class="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold">
