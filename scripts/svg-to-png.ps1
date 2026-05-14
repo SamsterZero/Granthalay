@@ -9,7 +9,7 @@ $icons = @(
 
 foreach ($icon in $icons) {
 
-    $svgPath = Join-Path $PSScriptRoot "$($icon.Name).svg"
+    $svgPath = Join-Path $PSScriptRoot "..\src\lib\assets\$($icon.Name).svg"
     $pngPath = Join-Path $staticDir "$($icon.Name).png"
     $fileUrl = [Uri]::new($svgPath).AbsoluteUri
 
