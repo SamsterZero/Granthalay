@@ -6,9 +6,9 @@ const CACHE = `cache-${version}`;
 const ASSETS = [
 	...build,
 	...files,
-	'/reader/',
-	'/reader/index.html',
-	'/reader/404.html'
+	'/Granthalay/',
+	'/Granthalay/index.html',
+	'/Granthalay/404.html'
 ];
 
 self.addEventListener('install', (event) => {
@@ -46,9 +46,9 @@ self.addEventListener('fetch', (event) => {
 
 		if (event.request.mode === 'navigate') {
 			const fallback =
-				(await cache.match('/reader/404.html')) ??
-				(await cache.match('/reader/index.html')) ??
-				(await cache.match('/reader/'));
+				(await cache.match('/Granthalay/404.html')) ??
+				(await cache.match('/Granthalay/index.html')) ??
+				(await cache.match('/Granthalay/'));
 			if (fallback) return fallback;
 		}
 
