@@ -1,4 +1,4 @@
-# Samster Reader
+# Granthalay
 
 A premium, local-first EPUB reader built with SvelteKit and Svelte 5.
 
