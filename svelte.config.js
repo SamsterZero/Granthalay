@@ -15,7 +15,7 @@ const config = {
 		}),
 		paths: {
 			// For GitHub Pages, use the repository name as base path
-			base: process.argv.includes('dev') ? '' : process.env.NODE_ENV === 'production' ? '/reader' : ''
+			base: process.argv.includes('dev') ? '' : process.env.NODE_ENV === 'production' ? '/Granthalay' : ''
 		},
 		prerender: {
 			handleUnseenRoutes: 'ignore',

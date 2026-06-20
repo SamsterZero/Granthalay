@@ -5,6 +5,7 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
 		<meta name="theme-color" content="#0D5C63" />
+		<meta name="robots" content="index,follow" />
 		<!-- Basic metadata -->
 		<title>Granthalay — Your Personal EPUB Reader</title>
 		<meta
@@ -12,7 +13,10 @@
 			content="Read EPUB books instantly in your browser. Install Granthalay as a PWA, read offline, and keep your books on your device—no sign-up, no cloud sync, fully client-side."
 		/>
 		<meta name="author" content="Samsterzero" />
-		<meta name="keywords" content="epub reader, ebook reader, pwa reader, offline reader, granthalay, books" />
+		<meta
+			name="keywords"
+			content="epub reader, ebook reader, pwa reader, offline reader, granthalay, books"
+		/>
 
 		<!-- Open Graph (WhatsApp, Discord, Telegram, LinkedIn, Facebook) -->
 		<meta property="og:title" content="Granthalay — Your Personal EPUB Reader" />
@@ -22,8 +26,8 @@
 		/>
 		<meta property="og:type" content="website" />
 		<meta property="og:site_name" content="Granthalay" />
-		<meta property="og:url" content="https://samsterzero.github.io/reader/" />
-		<meta property="og:image" content="https://samsterzero.github.io/reader/icon-512.png" />
+		<meta property="og:url" content="https://samsterzero.github.io/Granthalay/" />
+		<meta property="og:image" content="https://samsterzero.github.io/Granthalay/icon-512.png" />
 		<meta property="og:image:alt" content="Granthalay EPUB Reader app icon" />
 
 		<!-- Optional image metadata -->
@@ -37,17 +41,23 @@
 			name="twitter:description"
 			content="Read EPUB books instantly in your browser. Offline-first, installable, and fully client-side."
 		/>
-		<meta name="twitter:image" content="https://samsterzero.github.io/reader/icon-512.png" />
+		<meta name="twitter:image" content="https://samsterzero.github.io/Granthalay/icon-512.png" />
 
 		<!-- PWA / Mobile -->
 		<meta name="application-name" content="Granthalay" />
+		<link rel="icon" href="%sveltekit.assets%/icon-192.png" />
+		<link rel="apple-touch-icon" href="%sveltekit.assets%/icon-192.png" />
 		<meta name="apple-mobile-web-app-title" content="Granthalay" />
 		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<meta name="mobile-web-app-capable" content="yes" />
+		<link rel="canonical" href="https://samsterzero.github.io/Granthalay/" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.json" />
-		<link rel="preconnect" href="https://fonts.googleapis.com">
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-		<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=DM+Sans:ital,opsz,wght@0,9..40,100..1000&amp;display=swap" rel="stylesheet">
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&amp;family=DM+Sans:ital,opsz,wght@0,9..40,100..1000&amp;display=swap"
+			rel="stylesheet"
+		/>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
