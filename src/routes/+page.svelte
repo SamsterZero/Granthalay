@@ -5,18 +5,19 @@
 	import { onMount } from 'svelte';
 	import { saveBook, getAllBooks, deleteBookById, type BookMetadata } from '$lib/db';
 	import { EpubEngine } from '$lib/epub/engine';
-	import { Moon, Sun, Grid2x2, Grid3x3, Download, Plus, List } from 'lucide-svelte';
+	import { Grid2x2, Grid3x3, List, Plus } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { ButtonGroup } from '$lib/components/ui/button-group';
-	import BookCard from '$lib/components/BookCard.svelte';
-	import BookListItem from '$lib/components/BookListItem.svelte';
+	import BookCard from '$lib/components/library/BookCard.svelte';
+	import BookListItem from '$lib/components/library/BookListItem.svelte';
+	import TopBar from '$lib/components/library/TopBar.svelte';
 
 	interface BeforeInstallPromptEvent extends Event {
 		prompt: () => void;
 		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 	}
 
-	type GridMode = 'list' | 'compact' | 'comfortable';
+	type ViewMode = 'list' | 'compact' | 'comfortable';
 
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let books = $state<BookMetadata[]>([]);
@@ -31,7 +32,7 @@
 	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
 	let showInstall = $state(false);
 
-	function getInitialGridMode(): GridMode {
+	function getInitialViewMode(): ViewMode {
 		if (!browser) return 'list';
 		const saved = localStorage.getItem('library-grid-mode');
 		if (saved === 'compact' || saved === 'comfortable' || saved === 'list') {
@@ -39,7 +40,7 @@
 		}
 		return 'list';
 	}
-	let gridMode: GridMode = $state<GridMode>(getInitialGridMode());
+	let viewMode: ViewMode = $state<ViewMode>(getInitialViewMode());
 
 	onMount(async () => {
 		const savedTheme = localStorage.getItem('theme');
@@ -135,9 +136,9 @@
 		}
 	}
 
-	function setGridMode(mode: GridMode) {
-		if (gridMode === mode) return; // prevents repeated shrinking/growing
-		gridMode = mode;
+	function setViewMode(mode: ViewMode) {
+		if (viewMode === mode) return; // prevents repeated shrinking/growing
+		viewMode = mode;
 		if (browser) {
 			localStorage.setItem('library-grid-mode', mode);
 		}
@@ -147,32 +148,33 @@
 <div
 	class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4 md:p-7"
 >
-	<header class="flex items-center justify-between mb-8 text-foreground">
-		<div class="w-10 h-10 rounded bg-[#0D5C63] flex items-center justify-center">
-			<span class="text-white font-semibold">ग्रं</span>
-		</div>
-		<div class="flex items-center gap-3">
-			{#if showInstall}
-				<Button
-					class="bg-[#0D5C63] text-white rounded-full hover:bg-[#094A50] cursor-pointer"
-					onclick={handleInstall}
-				>
-					<Download size={20} />
-				</Button>
-			{/if}
+	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
+
+	<div class="pb-4 flex justify-between">
+		<ButtonGroup aria-label="Button group">
 			<Button
-				variant="outline"
-				size="icon"
-				class="rounded-full cursor-pointer"
-				onclick={toggleDarkMode}
-				title="Toggle theme"
+				variant={viewMode === 'list' ? 'default' : 'secondary'}
+				// disabled={viewMode === 'list'}
+				onclick={() => setViewMode('list')}
 			>
-				{#if darkMode}
-					<Sun size={20} />
-				{:else}
-					<Moon size={20} />
-				{/if}
+				<List size={20} />
 			</Button>
+			<Button
+				variant={viewMode === 'comfortable' ? 'default' : 'secondary'}
+				// disabled={viewMode === 'comfortable'}
+				onclick={() => setViewMode('comfortable')}
+			>
+				<Grid2x2 size={20} />
+			</Button>
+			<Button
+				variant={viewMode === 'compact' ? 'default' : 'secondary'}
+				// disabled={viewMode === 'compact'}
+				onclick={() => setViewMode('compact')}
+			>
+				<Grid3x3 size={20} />
+			</Button>
+		</ButtonGroup>
+		<div>
 			<input
 				type="file"
 				accept=".epub"
@@ -182,7 +184,7 @@
 				onchange={handleFileUpload}
 			/>
 			<Button
-				variant="outline"
+				variant="default"
 				size="icon"
 				class="rounded-full cursor-pointer"
 				onclick={() => fileInput?.click()}
@@ -191,31 +193,6 @@
 				<Plus size={20} />
 			</Button>
 		</div>
-	</header>
-	<div class="pb-4 flex justify-end">
-		<ButtonGroup aria-label="Button group">
-			<Button
-				variant={gridMode === 'list' ? 'default' : 'outline'}
-				disabled={gridMode === 'list'}
-				onclick={() => setGridMode('list')}
-			>
-				<List size={20} />
-			</Button>
-			<Button
-				variant={gridMode === 'comfortable' ? 'default' : 'outline'}
-				disabled={gridMode === 'comfortable'}
-				onclick={() => setGridMode('comfortable')}
-			>
-				<Grid2x2 size={20} />
-			</Button>
-			<Button
-				variant={gridMode === 'compact' ? 'default' : 'outline'}
-				disabled={gridMode === 'compact'}
-				onclick={() => setGridMode('compact')}
-			>
-				<Grid3x3 size={20} />
-			</Button>
-		</ButtonGroup>
 	</div>
 	<main class="mx-auto">
 		{#if loading}
@@ -224,7 +201,7 @@
 				<p>Loading library...</p>
 			</div>
 		{:else}
-			{#if gridMode === 'list'}
+			{#if viewMode === 'list'}
 				<div class="flex flex-col gap-2">
 					{#if defaultBook}
 						<BookListItem
@@ -247,7 +224,7 @@
 					{/each}
 				</div>
 			{/if}
-			{#if gridMode === 'compact'}
+			{#if viewMode === 'compact'}
 				<div
 					class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4"
 				>
@@ -272,7 +249,7 @@
 					{/each}
 				</div>
 			{/if}
-			{#if gridMode === 'comfortable'}
+			{#if viewMode === 'comfortable'}
 				<div
 					class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
 				>
