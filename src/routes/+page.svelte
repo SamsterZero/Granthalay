@@ -5,44 +5,48 @@
 	import { onMount } from 'svelte';
 	import { saveBook, getAllBooks, deleteBookById, type BookMetadata } from '$lib/db';
 	import { EpubEngine } from '$lib/epub/engine';
-	import { Moon, Sun, Grid2x2, Grid3x3, Download, Plus } from 'lucide-svelte';
+	import { Moon, Sun, Grid2x2, Grid3x3, Download, Plus, List } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { ButtonGroup } from '$lib/components/ui/button-group';
 	import BookCard from '$lib/components/BookCard.svelte';
+	import BookListItem from '$lib/components/BookListItem.svelte';
 
 	interface BeforeInstallPromptEvent extends Event {
 		prompt: () => void;
 		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 	}
 
-	type GridMode = 'compact' | 'comfortable';
+	type GridMode = 'list' | 'compact' | 'comfortable';
 
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let books = $state<BookMetadata[]>([]);
-	let defaultBook = $state<{ title: string; cover: string | Blob | null; progress?: number; totalBookPages?: number } | null>(null);
+	let defaultBook = $state<{
+		title: string;
+		cover: string | Blob | null;
+		progress?: number;
+		totalBookPages?: number;
+	} | null>(null);
 	let loading = $state(true);
 	let darkMode = $state(false);
 	let installPrompt: BeforeInstallPromptEvent | null = $state(null);
 	let showInstall = $state(false);
 
 	function getInitialGridMode(): GridMode {
-		if (!browser) return "compact";
-
-		const saved = localStorage.getItem("library-grid-mode");
-
-		return saved === "comfortable" ? "comfortable" : "compact";
+		if (!browser) return 'list';
+		const saved = localStorage.getItem('library-grid-mode');
+		if (saved === 'compact' || saved === 'comfortable' || saved === 'list') {
+			return saved;
+		}
+		return 'list';
 	}
 	let gridMode: GridMode = $state<GridMode>(getInitialGridMode());
 
-	const gridClasses = $derived(
-		gridMode === "compact" 
-			? 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7'
-			: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'
-	);
-
 	onMount(async () => {
 		const savedTheme = localStorage.getItem('theme');
-		if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+		if (
+			savedTheme === 'dark' ||
+			(!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
+		) {
 			darkMode = true;
 			document.documentElement.classList.add('dark');
 		}
@@ -135,13 +139,14 @@
 		if (gridMode === mode) return; // prevents repeated shrinking/growing
 		gridMode = mode;
 		if (browser) {
-			localStorage.setItem("library-grid-mode", mode);
+			localStorage.setItem('library-grid-mode', mode);
 		}
 	}
-
 </script>
 
-<div class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4 md:p-7">
+<div
+	class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4 md:p-7"
+>
 	<header class="flex items-center justify-between mb-8 text-foreground">
 		<div class="w-10 h-10 rounded bg-[#0D5C63] flex items-center justify-center">
 			<span class="text-white font-semibold">ग्रं</span>
@@ -155,7 +160,7 @@
 					<Download size={20} />
 				</Button>
 			{/if}
-			<Button 
+			<Button
 				variant="outline"
 				size="icon"
 				class="rounded-full cursor-pointer"
@@ -179,8 +184,8 @@
 			<Button
 				variant="outline"
 				size="icon"
-				class="rounded-full cursor-pointer" 
-				onclick={() => fileInput?.click()} 
+				class="rounded-full cursor-pointer"
+				onclick={() => fileInput?.click()}
 				title="Upload EPUB"
 			>
 				<Plus size={20} />
@@ -190,18 +195,25 @@
 	<div class="pb-4 flex justify-end">
 		<ButtonGroup aria-label="Button group">
 			<Button
+				variant={gridMode === 'list' ? 'default' : 'outline'}
+				disabled={gridMode === 'list'}
+				onclick={() => setGridMode('list')}
+			>
+				<List size={20} />
+			</Button>
+			<Button
 				variant={gridMode === 'comfortable' ? 'default' : 'outline'}
 				disabled={gridMode === 'comfortable'}
 				onclick={() => setGridMode('comfortable')}
 			>
-				<Grid2x2 size={20}/>
+				<Grid2x2 size={20} />
 			</Button>
 			<Button
 				variant={gridMode === 'compact' ? 'default' : 'outline'}
 				disabled={gridMode === 'compact'}
 				onclick={() => setGridMode('compact')}
 			>
-				<Grid3x3 size={20}/>
+				<Grid3x3 size={20} />
 			</Button>
 		</ButtonGroup>
 	</div>
@@ -212,34 +224,77 @@
 				<p>Loading library...</p>
 			</div>
 		{:else}
-			<div class={`grid ${gridClasses} gap-4`}>
-				<!-- Default Book -->
-				{#if defaultBook}
-					<BookCard
-						id="default"
-						title={defaultBook.title}
-						cover={defaultBook.cover}
-						progress={defaultBook.progress}
-						onOpen={openBook}
-					/>
-				{/if}
-
-				<!-- Uploaded Books -->
-				{#each books as book (book.id)}
-					<BookCard
-						id={book.id}
-						title={book.title}
-						cover={book.cover}
-						progress={book.progress}
-						onOpen={openBook}
-						onDelete={handleDeleteBook}
-					/>
-				{/each}
-			</div>
-
-			{#if books.length === 0}
-				<div class="text-center p-16 text-foreground text-lg opacity-90">
-					<p>Your library is empty. Upload an EPUB to get started!</p>
+			{#if gridMode === 'list'}
+				<div class="flex flex-col gap-2">
+					{#if defaultBook}
+						<BookListItem
+							id="default"
+							title={defaultBook.title}
+							cover={defaultBook.cover}
+							progress={defaultBook.progress}
+							onOpen={openBook}
+						></BookListItem>
+					{/if}
+					{#each books as book (book.id)}
+						<BookListItem
+							id={book.id}
+							title={book.title}
+							cover={book.cover}
+							progress={book.progress}
+							onOpen={openBook}
+							onDelete={handleDeleteBook}
+						></BookListItem>
+					{/each}
+				</div>
+			{/if}
+			{#if gridMode === 'compact'}
+				<div
+					class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4"
+				>
+					{#if defaultBook}
+						<BookCard
+							id="default"
+							title={defaultBook.title}
+							cover={defaultBook.cover}
+							progress={defaultBook.progress}
+							onOpen={openBook}
+						/>
+					{/if}
+					{#each books as book (book.id)}
+						<BookCard
+							id={book.id}
+							title={book.title}
+							cover={book.cover}
+							progress={book.progress}
+							onOpen={openBook}
+							onDelete={handleDeleteBook}
+						></BookCard>
+					{/each}
+				</div>
+			{/if}
+			{#if gridMode === 'comfortable'}
+				<div
+					class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+				>
+					{#if defaultBook}
+						<BookCard
+							id="default"
+							title={defaultBook.title}
+							cover={defaultBook.cover}
+							progress={defaultBook.progress}
+							onOpen={openBook}
+						/>
+					{/if}
+					{#each books as book (book.id)}
+						<BookCard
+							id={book.id}
+							title={book.title}
+							cover={book.cover}
+							progress={book.progress}
+							onOpen={openBook}
+							onDelete={handleDeleteBook}
+						></BookCard>
+					{/each}
 				</div>
 			{/if}
 		{/if}
