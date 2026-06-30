@@ -5,12 +5,10 @@
 	import { onMount } from 'svelte';
 	import { saveBook, getAllBooks, deleteBookById, type BookMetadata } from '$lib/db';
 	import { EpubEngine } from '$lib/epub/engine';
-	import { Grid2x2, Grid3x3, List, Plus } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { ButtonGroup } from '$lib/components/ui/button-group';
 	import BookCard from '$lib/components/library/BookCard.svelte';
 	import BookListItem from '$lib/components/library/BookListItem.svelte';
 	import TopBar from '$lib/components/library/TopBar.svelte';
+	import LibraryToolbar from '$lib/components/library/LibraryToolbar.svelte';
 
 	interface BeforeInstallPromptEvent extends Event {
 		prompt: () => void;
@@ -146,54 +144,16 @@
 </script>
 
 <div
-	class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4 md:p-7"
+	class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4"
 >
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-	<div class="pb-4 flex justify-between">
-		<ButtonGroup aria-label="Button group">
-			<Button
-				variant={viewMode === 'list' ? 'default' : 'secondary'}
-				// disabled={viewMode === 'list'}
-				onclick={() => setViewMode('list')}
-			>
-				<List size={20} />
-			</Button>
-			<Button
-				variant={viewMode === 'comfortable' ? 'default' : 'secondary'}
-				// disabled={viewMode === 'comfortable'}
-				onclick={() => setViewMode('comfortable')}
-			>
-				<Grid2x2 size={20} />
-			</Button>
-			<Button
-				variant={viewMode === 'compact' ? 'default' : 'secondary'}
-				// disabled={viewMode === 'compact'}
-				onclick={() => setViewMode('compact')}
-			>
-				<Grid3x3 size={20} />
-			</Button>
-		</ButtonGroup>
-		<div>
-			<input
-				type="file"
-				accept=".epub"
-				class="hidden"
-				style="display: none;"
-				bind:this={fileInput}
-				onchange={handleFileUpload}
-			/>
-			<Button
-				variant="default"
-				size="icon"
-				class="rounded-full cursor-pointer"
-				onclick={() => fileInput?.click()}
-				title="Upload EPUB"
-			>
-				<Plus size={20} />
-			</Button>
-		</div>
-	</div>
+	<LibraryToolbar
+		viewMode={viewMode}
+		fileInput={fileInput}
+		setViewMode={setViewMode}
+		handleFileUpload={handleFileUpload}
+	/>
 	<main class="mx-auto">
 		{#if loading}
 			<div class="flex flex-col items-center justify-center gap-4 text-foreground">

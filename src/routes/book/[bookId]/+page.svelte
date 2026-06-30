@@ -7,8 +7,8 @@
 	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
 	import { Play } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import { Skeleton } from '$lib/components/ui/skeleton';
+	import TopBar from '$lib/components/library/book/TopBar.svelte';
 
 	const bookId = $derived(page.params.bookId ?? 'default');
 
@@ -64,7 +64,7 @@
 			if (spineInfos) {
 				chapters = await engine.parseChapters(spineInfos);
 			}
-			
+
 			author = engine.metadata.author;
 			description = engine.metadata.description;
 			storedTitle = engine.metadata.title;
@@ -107,7 +107,7 @@
 	function startReading(chapterIndex?: number) {
 		const url = new URL(`${resolve('/reader')}`, window.location.origin);
 		url.searchParams.set('bookId', bookId);
-		
+
 		if (chapterIndex !== undefined) {
 			url.searchParams.set('chapter', chapterIndex.toString());
 		} else if (currentChapterIndex !== null) {
@@ -116,7 +116,7 @@
 				url.searchParams.set('page', currentPageIndex.toString());
 			}
 		}
-		
+
 		goto(url.pathname + url.search);
 	}
 
@@ -127,21 +127,13 @@
 
 <div class="min-h-screen lg:h-screen bg-background flex flex-col">
 	<!-- Header -->
-	<div class="border-b px-6 py-4 flex items-center gap-4 shrink-0">
-		<Button variant="ghost" size="icon" onclick={goBack}>
-			<ChevronLeft class="h-4 w-4" />
-		</Button>
-		{#if loading && title === 'Unknown Book'}
-			<Skeleton class="h-6 w-48" />
-		{:else}
-			<h1 class="font-semibold text-lg line-clamp-1">{title}</h1>
-		{/if}
-	</div>
-
+	<TopBar {title} {loading} {goBack} />
 	{#if loading}
 		<div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
 			<!-- Left Panel Skeleton -->
-			<div class="lg:w-1/3 lg:max-w-md lg:h-full lg:min-h-0 relative overflow-hidden lg:border-r p-6 lg:p-8">
+			<div
+				class="lg:w-1/3 lg:max-w-md lg:h-full lg:min-h-0 relative overflow-hidden lg:border-r p-6 lg:p-8"
+			>
 				<div class="max-w-sm mx-auto lg:mx-0">
 					<Skeleton class="aspect-2/3 max-w-[240px] mx-auto rounded-lg mb-6" />
 					<Skeleton class="h-8 w-3/4 mb-2" />
@@ -179,7 +171,9 @@
 					<!-- Blurred background -->
 					<div class="absolute inset-0">
 						<img src={coverUrl} alt="" class="w-full h-full object-cover blur" />
-						<div class="absolute inset-0 bg-linear-to-b from-transparent via-background/80 to-background"></div>
+						<div
+							class="absolute inset-0 bg-linear-to-b from-transparent via-background/80 to-background"
+						></div>
 					</div>
 				{:else}
 					<div class="absolute inset-0 bg-linear-to-br from-[#0D5C63] to-[#094a50]"></div>
@@ -191,7 +185,9 @@
 							{#if coverUrl}
 								<img src={coverUrl} alt={title} class="w-full h-full object-cover" />
 							{:else}
-								<div class="w-full h-full flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold">
+								<div
+									class="w-full h-full flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold"
+								>
 									{getInitials(title)}
 								</div>
 							{/if}
@@ -211,22 +207,24 @@
 			<div class="flex-1 lg:h-full lg:min-h-0 p-6 lg:p-8 overflow-y-auto">
 				<h3 class="text-lg font-semibold mb-4">Chapters</h3>
 				<div class="space-y-2">
-					{#each chapters.filter(c => (!c.isFrontmatter || chapters.length === 1) && !c.title.includes('(cont.)')) as chapter, index (chapter.href)}
+					{#each chapters.filter((c) => (!c.isFrontmatter || chapters.length === 1) && !c.title.includes('(cont.)')) as chapter, index (chapter.href)}
 						{@const globalIndex = chapters.indexOf(chapter)}
 						{@const isActive = globalIndex === currentChapterIndex}
 						{@const isRead = currentChapterIndex !== null && globalIndex < currentChapterIndex}
-						
+
 						<button
 							class={`w-full flex items-center gap-4 p-4 rounded-lg border transition-all text-left ${
-								isRead 
-									? 'opacity-50 grayscale bg-muted/30' 
+								isRead
+									? 'opacity-50 grayscale bg-muted/30'
 									: isActive
 										? 'border-[#0D5C63] bg-[#0D5C63]/5 ring-1 ring-[#0D5C63]/20'
 										: 'hover:bg-accent'
 							}`}
 							onclick={() => startReading(globalIndex)}
 						>
-							<span class={`text-sm w-8 ${isActive ? 'text-[#0D5C63] font-bold' : 'text-muted-foreground'}`}>
+							<span
+								class={`text-sm w-8 ${isActive ? 'text-[#0D5C63] font-bold' : 'text-muted-foreground'}`}
+							>
 								{index + 1}
 							</span>
 							<div class="flex-1 min-w-0">
@@ -234,7 +232,9 @@
 									{chapter.title}
 								</p>
 								{#if isActive && currentPageIndex !== null}
-									<p class="text-[10px] text-[#0D5C63]/70 font-medium mt-0.5">Currently at Page {currentPageIndex + 1}</p>
+									<p class="text-[10px] text-[#0D5C63]/70 font-medium mt-0.5">
+										Currently at Page {currentPageIndex + 1}
+									</p>
 								{:else}
 									<p class="text-[10px] text-muted-foreground mt-0.5">
 										{isRead ? 'Completed' : 'Not started'}
