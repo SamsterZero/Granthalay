@@ -5,10 +5,12 @@
 	import { onMount } from 'svelte';
 	import { getBookById, type BookRecord } from '$lib/db';
 	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
-	import { Play } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
-	import { Skeleton } from '$lib/components/ui/skeleton';
 	import TopBar from '$lib/components/library/book/TopBar.svelte';
+	import BookDetailsSkeleton from '$lib/components/library/book/BookDetailsSkeleton.svelte';
+	import ResumeFab from '$lib/components/library/book/ResumeFab.svelte';
+	import BookInfoPanel from '$lib/components/library/book/BookInfoPanel.svelte';
+	import ChapterList from '$lib/components/library/book/ChapterList.svelte';
 
 	const bookId = $derived(page.params.bookId ?? 'default');
 
@@ -119,42 +121,13 @@
 
 		goto(url.pathname + url.search);
 	}
-
-	function getInitials(name: string): string {
-		return name.charAt(0).toUpperCase();
-	}
 </script>
 
 <div class="min-h-screen lg:h-screen bg-background flex flex-col">
 	<!-- Header -->
 	<TopBar {title} {loading} {goBack} />
 	{#if loading}
-		<div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
-			<!-- Left Panel Skeleton -->
-			<div
-				class="lg:w-1/3 lg:max-w-md lg:h-full lg:min-h-0 relative overflow-hidden lg:border-r p-6 lg:p-8"
-			>
-				<div class="max-w-sm mx-auto lg:mx-0">
-					<Skeleton class="aspect-2/3 max-w-[240px] mx-auto rounded-lg mb-6" />
-					<Skeleton class="h-8 w-3/4 mb-2" />
-					<Skeleton class="h-4 w-1/2 mb-4" />
-					<Skeleton class="h-20 w-full" />
-				</div>
-			</div>
-			<!-- Right Panel Skeleton -->
-			<div class="flex-1 lg:h-full overflow-hidden flex flex-col bg-muted/30">
-				<div class="p-6 border-b bg-background">
-					<Skeleton class="h-10 w-32" />
-				</div>
-				<div class="flex-1 p-6 space-y-4">
-					{#each [0, 1, 2, 3, 4, 5, 6, 7] as i (i)}
-						<div class="flex items-center gap-4">
-							<Skeleton class="h-12 w-full rounded-lg" />
-						</div>
-					{/each}
-				</div>
-			</div>
-		</div>
+		<BookDetailsSkeleton />
 	{:else if error}
 		<div class="flex-1 flex items-center justify-center p-8">
 			<div class="text-center">
@@ -166,103 +139,13 @@
 		<!-- Two Panel Layout -->
 		<div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
 			<!-- Left Panel: Cover -->
-			<div class="lg:w-1/3 lg:max-w-md lg:h-full lg:min-h-0 relative overflow-hidden lg:border-r">
-				{#if coverUrl}
-					<!-- Blurred background -->
-					<div class="absolute inset-0">
-						<img src={coverUrl} alt="" class="w-full h-full object-cover blur" />
-						<div
-							class="absolute inset-0 bg-linear-to-b from-transparent via-background/80 to-background"
-						></div>
-					</div>
-				{:else}
-					<div class="absolute inset-0 bg-linear-to-br from-[#0D5C63] to-[#094a50]"></div>
-				{/if}
-				<!-- Content -->
-				<div class="relative z-10 p-6 lg:p-8 h-full overflow-y-auto">
-					<div class="max-w-sm mx-auto lg:mx-0">
-						<div class="aspect-2/3 max-w-[240px] mx-auto rounded-lg overflow-hidden shadow-lg mb-6">
-							{#if coverUrl}
-								<img src={coverUrl} alt={title} class="w-full h-full object-cover" />
-							{:else}
-								<div
-									class="w-full h-full flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold"
-								>
-									{getInitials(title)}
-								</div>
-							{/if}
-						</div>
-						<h2 class="text-xl font-bold mb-2">{title}</h2>
-						{#if author}
-							<p class="text-muted-foreground mb-4">by {author}</p>
-						{/if}
-						{#if description}
-							<p class="text-sm text-muted-foreground leading-relaxed">{description}</p>
-						{/if}
-					</div>
-				</div>
-			</div>
+			<BookInfoPanel {coverUrl} {title} {author} {description} />
 
 			<!-- Right Panel: Chapters -->
-			<div class="flex-1 lg:h-full lg:min-h-0 p-6 lg:p-8 overflow-y-auto">
-				<h3 class="text-lg font-semibold mb-4">Chapters</h3>
-				<div class="space-y-2">
-					{#each chapters.filter((c) => (!c.isFrontmatter || chapters.length === 1) && !c.title.includes('(cont.)')) as chapter, index (chapter.href)}
-						{@const globalIndex = chapters.indexOf(chapter)}
-						{@const isActive = globalIndex === currentChapterIndex}
-						{@const isRead = currentChapterIndex !== null && globalIndex < currentChapterIndex}
-
-						<button
-							class={`w-full flex items-center gap-4 p-4 rounded-lg border transition-all text-left ${
-								isRead
-									? 'opacity-50 grayscale bg-muted/30'
-									: isActive
-										? 'border-[#0D5C63] bg-[#0D5C63]/5 ring-1 ring-[#0D5C63]/20'
-										: 'hover:bg-accent'
-							}`}
-							onclick={() => startReading(globalIndex)}
-						>
-							<span
-								class={`text-sm w-8 ${isActive ? 'text-[#0D5C63] font-bold' : 'text-muted-foreground'}`}
-							>
-								{index + 1}
-							</span>
-							<div class="flex-1 min-w-0">
-								<p class={`font-medium truncate ${isActive ? 'text-[#0D5C63]' : ''}`}>
-									{chapter.title}
-								</p>
-								{#if isActive && currentPageIndex !== null}
-									<p class="text-[10px] text-[#0D5C63]/70 font-medium mt-0.5">
-										Currently at Page {currentPageIndex + 1}
-									</p>
-								{:else}
-									<p class="text-[10px] text-muted-foreground mt-0.5">
-										{isRead ? 'Completed' : 'Not started'}
-									</p>
-								{/if}
-							</div>
-							<Play class={`w-4 h-4 ${isActive ? 'text-[#0D5C63]' : 'text-muted-foreground'}`} />
-						</button>
-					{:else}
-						<p class="text-muted-foreground text-center py-8">No chapters found</p>
-					{/each}
-				</div>
-			</div>
+			<ChapterList {chapters} {currentChapterIndex} {currentPageIndex} {startReading} />
 		</div>
 	{/if}
 
 	<!-- FAB: Action Button -->
-	<Button
-		class="fixed bottom-6 right-6 rounded-lg px-6 py-6 shadow-lg hover:shadow-xl transition-shadow bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white"
-		size="lg"
-		onclick={() => startReading()}
-	>
-		{#if currentChapterIndex === null}
-			<Play class="w-5 h-5 mr-2" />
-			Start Reading
-		{:else}
-			<Play class="w-5 h-5 mr-2" />
-			Resume
-		{/if}
-	</Button>
+	<ResumeFab {currentChapterIndex} {startReading} />
 </div>

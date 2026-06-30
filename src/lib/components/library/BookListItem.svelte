@@ -54,7 +54,7 @@
 
 		{#if progress && progress > 0}
 			<ItemDescription>
-				{Math.round(progress * 100)}% read
+				{Math.round(progress * 100)}% complete
 			</ItemDescription>
 		{/if}
 	</ItemContent>
