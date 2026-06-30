@@ -59,3 +59,10 @@
 		</Button>
 	</div>
 </div>
+
+<style>
+	.selected {
+		background: var(--accent);
+		color: var(--accent-foreground);
+	}
+</style>

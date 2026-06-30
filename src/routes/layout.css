@@ -8,72 +8,126 @@
 @plugin '@tailwindcss/typography';
 
 :root {
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
-	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
-	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.45 0.07 205);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
-	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
+	/* Backgrounds */
+	--background: oklch(0.98 0.003 180); /* Soft Paper */
+	--foreground: oklch(0.27 0.01 220); /* Charcoal Ink */
+
+	--card: oklch(1 0 0); /* Pure White */
+	--card-foreground: oklch(0.27 0.01 220); /* Charcoal Ink */
+
+	--popover: oklch(1 0 0); /* Pure White */
+	--popover-foreground: oklch(0.27 0.01 220); /* Charcoal Ink */
+
+	/* Brand */
+	--primary: oklch(0.45 0.08 196); /* Deep Teal */
+	--primary-foreground: oklch(1 0 0); /* White */
+
+	/* Neutral secondary */
+	--secondary: oklch(0.94 0.02 196); /* Mist Teal */
+	--secondary-foreground: oklch(0.27 0.01 220);
+
+	/* Utility */
+	--muted: oklch(0.94 0.01 196); /* Fog */
+	--muted-foreground: oklch(0.55 0.01 220); /* Slate */
+
+	/* Accent */
+	--accent: oklch(0.93 0.05 78); /* Soft Saffron */
+	--accent-foreground: oklch(0.24 0.02 78); /* Dark Bronze */
+
+	--border: oklch(0.91 0.01 196); /* Silver Mist */
+	--input: oklch(0.91 0.01 196); /* Silver Mist */
+	--ring: oklch(0.45 0.08 196); /* Deep Teal */
+
+	/* Feedback */
+	--destructive: oklch(0.62 0.21 28); /* Crimson */
+	--destructive-foreground: oklch(1 0 0); /* White */
+
+	--success: oklch(0.64 0.16 145); /* Emerald */
+	--warning: oklch(0.8 0.16 78); /* Amber */
+	--info: oklch(0.66 0.11 230); /* Sapphire */
+
+	/* Charts */
+	--chart-1: oklch(0.45 0.08 196); /* Deep Teal */
+	--chart-2: oklch(0.76 0.13 78); /* Saffron Gold */
+	--chart-3: oklch(0.64 0.16 145); /* Emerald */
+	--chart-4: oklch(0.66 0.11 230); /* Sapphire */
+	--chart-5: oklch(0.62 0.21 28); /* Crimson */
+
 	--radius: 0.625rem;
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.205 0 0);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.97 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.708 0 0);
+
+	/* Sidebar */
+	--sidebar: oklch(0.97 0.005 196); /* Soft Paper */
+	--sidebar-foreground: oklch(0.27 0.01 220); /* Charcoal Ink */
+
+	--sidebar-primary: oklch(0.45 0.08 196); /* Deep Teal */
+	--sidebar-primary-foreground: oklch(1 0 0); /* White */
+
+	--sidebar-accent: oklch(0.94 0.02 196); /* Mist Teal */
+	--sidebar-accent-foreground: oklch(0.27 0.01 220); /* Charcoal Ink */
+
+	--sidebar-border: oklch(0.91 0.01 196); /* Silver Mist */
+	--sidebar-ring: oklch(0.58 0.09 196); /* Ocean Teal */
 }
 
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.45 0.07 205);
-	--primary-foreground: oklch(1 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
-	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
+	/* Backgrounds */
+	--background: oklch(0.16 0.01 220); /* Midnight Ink */
+	--foreground: oklch(0.96 0.005 220); /* Soft White */
+
+	--card: oklch(0.21 0.01 220); /* Dark Slate */
+	--card-foreground: oklch(0.96 0.005 220);
+
+	--popover: oklch(0.21 0.01 220); /* Dark Slate */
+	--popover-foreground: oklch(0.96 0.005 220);
+
+	/* Brand (unchanged) */
+	--primary: oklch(0.45 0.08 196); /* Deep Teal */
+	--primary-foreground: oklch(1 0 0); /* White */
+
+	/* Neutral secondary */
+	--secondary: oklch(0.28 0.02 196); /* Deep Mist Teal */
+	--secondary-foreground: oklch(0.96 0.005 220);
+
+	/* Utility */
+	--muted: oklch(0.24 0.01 220); /* Slate */
+	--muted-foreground: oklch(0.72 0.01 220); /* Muted White */
+
+	/* Accent */
+	--accent: oklch(0.35 0.05 78); /* Deep Saffron */
+	--accent-foreground: oklch(0.96 0.005 220); /* Soft White */
+
+	/* Feedback */
+	--destructive: oklch(0.62 0.21 28); /* Crimson */
+	--destructive-foreground: oklch(1 0 0);
+
+	--success: oklch(0.64 0.16 145); /* Emerald */
+	--warning: oklch(0.8 0.16 78); /* Amber */
+	--info: oklch(0.66 0.11 230); /* Sapphire */
+
+	/* Borders */
+	--border: oklch(0.3 0.01 220); /* Graphite */
+	--input: oklch(0.3 0.01 220); /* Graphite */
+	--ring: oklch(0.45 0.08 196); /* Deep Teal */
+
+	/* Charts */
+	--chart-1: oklch(0.45 0.08 196); /* Deep Teal */
+	--chart-2: oklch(0.76 0.13 78); /* Saffron Gold */
+	--chart-3: oklch(0.64 0.16 145); /* Emerald */
+	--chart-4: oklch(0.66 0.11 230); /* Sapphire */
+	--chart-5: oklch(0.62 0.21 28); /* Crimson */
+
+	/* Sidebar */
+	--sidebar: oklch(0.18 0.01 220); /* Midnight Slate */
+	--sidebar-foreground: oklch(0.96 0.005 220);
+
+	--sidebar-primary: oklch(0.45 0.08 196); /* Deep Teal */
+	--sidebar-primary-foreground: oklch(1 0 0);
+
+	--sidebar-accent: oklch(0.28 0.02 196); /* Deep Mist Teal */
+	--sidebar-accent-foreground: oklch(0.96 0.005 220);
+
+	--sidebar-border: oklch(0.3 0.01 220); /* Graphite */
+	--sidebar-ring: oklch(0.45 0.08 196); /* Deep Teal */
 }
 
 @theme inline {

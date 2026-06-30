@@ -34,7 +34,7 @@
 </script>
 
 <Item
-	class="bg-accent p-2"
+	class="bg-muted p-2"
 	onclick={() => onOpen(id)}
 >
 	<!-- Cover -->
