@@ -14,8 +14,7 @@ const config = {
 			assets: 'build'
 		}),
 		paths: {
-			// For GitHub Pages, use the repository name as base path
-			base: process.argv.includes('dev') ? '' : process.env.NODE_ENV === 'production' ? '/Granthalay' : ''
+			base: process.env.DEPLOY_TARGET === 'github-pages' ? '/Granthalay' : ''
 		},
 		prerender: {
 			handleUnseenRoutes: 'ignore',

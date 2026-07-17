@@ -32,6 +32,8 @@ jobs:
 
       - name: Build
         run: bun run build
+        env:
+          DEPLOY_TARGET: github-pages
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
