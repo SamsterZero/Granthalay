@@ -10,6 +10,7 @@ Notable changes to Granthalay will be recorded here. The project follows
 
 - Maintained user, engineering, privacy, deployment, compatibility, and troubleshooting docs.
 - Contribution, security, conduct, issue, pull-request, and CI project infrastructure.
+- Original, generated EPUB 2 and EPUB 3 parser fixtures with malformed-archive coverage.
 
 ### Changed
 

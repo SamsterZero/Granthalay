@@ -4,6 +4,13 @@ Setup, commands, validation, and pull-request requirements live in
 [CONTRIBUTING.md](../CONTRIBUTING.md). The current reader uses SvelteKit, Svelte 5, TypeScript,
 Tailwind CSS, JSZip, `sanitize-html`, and Zod.
 
+## EPUB regression fixtures
+
+`src/lib/epub/testing/fixtures.ts` generates small, original EPUB 2 and EPUB 3 archives in memory.
+They cover container and OPF discovery, spine order, NCX and EPUB navigation, CSS, raster images,
+SVG references, and malformed packages without distributing third-party book content. Run the suite
+with `bun run test -- src/lib/epub/engine.test.ts`.
+
 ## Working safely
 
 Keep sanitization in the parse path, avoid `{@html}` with unsanitized values, revoke object URLs,
