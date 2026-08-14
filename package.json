@@ -18,7 +18,7 @@
 		"@readium/navigator": "^2.6.0",
 		"@readium/shared": "^2.2.2",
 		"@sentry/sveltekit": "^10.70.0",
-		"jsdom": "^29.1.1",
+		"jsdom": "^30.0.1",
 		"jszip": "^3.10.1",
 		"lucide-svelte": "^1.0.1",
 		"pino": "^10.3.1",
