@@ -36,4 +36,4 @@ jobs:
         run: bun run check
 
       - name: Build static site
-        run: bun run build
+        run: bun run verify:build

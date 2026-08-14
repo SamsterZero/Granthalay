@@ -1,15 +1,11 @@
 /// <reference types="@sveltejs/kit" />
-import { build, files, version } from '$service-worker';
+import { base, build, files, prerendered, version } from '$service-worker';
 
 const CACHE = `cache-${version}`;
+const appPath = (path = '') => `${base}/${path}`;
+const FALLBACKS = [appPath('404.html'), appPath('index.html'), appPath()];
 
-const ASSETS = [
-	...build,
-	...files,
-	'/Granthalay/',
-	'/Granthalay/index.html',
-	'/Granthalay/404.html'
-];
+const ASSETS = [...new Set([...build, ...files, ...prerendered, ...FALLBACKS])];
 
 self.addEventListener('install', (event) => {
 	async function addFilesToCache() {
@@ -45,11 +41,10 @@ self.addEventListener('fetch', (event) => {
 		}
 
 		if (event.request.mode === 'navigate') {
-			const fallback =
-				(await cache.match('/Granthalay/404.html')) ??
-				(await cache.match('/Granthalay/index.html')) ??
-				(await cache.match('/Granthalay/'));
-			if (fallback) return fallback;
+			for (const fallbackPath of FALLBACKS) {
+				const fallback = await cache.match(fallbackPath);
+				if (fallback) return fallback;
+			}
 		}
 
 		try {

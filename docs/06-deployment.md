@@ -21,12 +21,11 @@ docker run --rm -p 8080:80 granthalay:local
 The multi-stage Dockerfile builds with Bun and serves with nginx. The container needs no persistent
 volume because user data lives in each browser.
 
-## PWA caveat
+## Deployment paths
 
-`static/manifest.json` and the service worker currently contain explicit `/Granthalay/` paths. This
-matches official GitHub Pages but is not fully portable to root-path or renamed deployments. Verify
-installability and offline navigation on custom deployments; making these paths base-aware is
-roadmap work.
+The web manifest is generated from SvelteKit's configured base path, and the service worker derives
+the same base from its deployed URL. `bun run verify:build` builds and checks both root hosting and
+the official `/Granthalay/` GitHub Pages path, including manifest links and offline fallbacks.
 
 Browser storage is origin-specific. Changing scheme, host, or port can make a library appear empty
 even though data remains under the old origin.
