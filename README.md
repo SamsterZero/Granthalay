@@ -9,8 +9,8 @@ telemetry.
 </p>
 
 **Quick links:** [Try it](https://samsterzero.github.io/Granthalay/) ·
-[User guide](docs/01-user-guide.md) · [Architecture](docs/04-architecture.md) ·
-[Troubleshooting](docs/08-troubleshooting.md) · [Contributing](CONTRIBUTING.md)
+[Reader Wiki](https://github.com/SamsterZero/Granthalay/wiki) ·
+[Architecture](docs/04-architecture.md) · [Contributing](CONTRIBUTING.md)
 
 ## What it does
 
@@ -38,8 +38,8 @@ of that backend.
 
 ## Documentation
 
-Use the [documentation hub](docs/README.md) for maintained technical documentation or the
-[GitHub Wiki](https://github.com/SamsterZero/Granthalay/wiki) for reader-friendly guides. Local
+Use the [engineering context](docs/README.md) when developing with people or AI agents, and the
+[GitHub Wiki](https://github.com/SamsterZero/Granthalay/wiki) for reader guidance. Local
 setup, validation, and pull-request instructions live only in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing and security
