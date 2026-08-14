@@ -1,8 +1,8 @@
 # Vision and Principles
 
-Granthalay combines private personal reading with an optional bookstore. Personal EPUB import and
-reading remain local and account-free; connected features are added in the same repository as a
-modular monolith.
+Granthalay is a privacy-first bookstore and EPUB-reading PWA. Personal EPUB import and reading
+remain local and account-free. Optional connected features use a separately hosted modular backend
+developed in the same repository.
 
 ## Principles
 
@@ -12,10 +12,11 @@ modular monolith.
 - **Safe by construction:** treat every EPUB archive and document as untrusted input.
 - **Progressive capability:** installation and offline use enhance the web app but are not required.
 - **Honest compatibility:** document format limitations and regressions openly.
-- **Modular, not distributed:** enforce module ownership before introducing separate services.
+- **Static PWA:** keep the reader installable, offline-capable, and deployable to GitHub Pages.
+- **Modular backend:** enforce module ownership within one backend before splitting services.
 
 ## Boundaries
 
-Accounts, catalog, commerce, and server storage are planned but not implemented. They must remain
-optional for personal books and must not collect reading activity by default. DRM circumvention
-and PDF support are outside the current roadmap.
+Email/password accounts, catalog, commerce, entitlements, and server storage are planned but not
+implemented. They must remain optional for personal books and must not collect reading activity by
+default. DRM circumvention and PDF support are outside the current roadmap.

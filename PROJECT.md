@@ -1,7 +1,8 @@
 # Granthalay Project Guide
 
-Granthalay is currently a browser-only EPUB reader and is planned to become a single-repository
-modular monolith with an optional bookstore. Detailed material lives in [docs](docs/README.md).
+Granthalay is currently a browser-only EPUB reader and is planned to become a privacy-first
+bookstore and reading PWA. One repository produces two deployables: a static PWA and a separately
+hosted modular backend API. Detailed material lives in [docs](docs/README.md).
 
 ## Product constraints
 
@@ -11,8 +12,10 @@ modular monolith with an optional bookstore. Detailed material lives in [docs](d
   is available offline.
 - Untrusted EPUB markup is sanitized before insertion into the document.
 - Features should work with keyboard, pointer, and touch input where applicable.
-- Store, identity, catalog, commerce, and notification code remain explicit modules in this repo.
-- Module boundaries permit a later split but do not require distributed infrastructure now.
+- Accounts, catalog, commerce, entitlements, content, and notification remain explicit backend
+  modules in this repo.
+- The backend starts as one deployable and database. Module boundaries permit a later split without
+  requiring distributed infrastructure now.
 
 ## Source of truth
 

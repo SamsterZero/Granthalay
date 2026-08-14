@@ -31,8 +31,10 @@ storage is origin-specific: clearing site data, changing the deployment URL, or 
 browser/profile produces a different library. Back up the original EPUB files separately;
 Granthalay does not currently offer library export.
 
-The roadmap evolves Granthalay into a single-repository modular monolith with optional accounts
-and a bookstore while preserving anonymous local reading.
+The roadmap adds an optional bookstore without changing the reader's static-PWA foundation. The
+PWA remains deployable to GitHub Pages; a separately hosted modular backend provides accounts,
+catalog, purchases, entitlements, and book delivery. Anonymous local reading remains independent
+of that backend.
 
 ## Documentation
 

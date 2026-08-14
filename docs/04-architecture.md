@@ -39,8 +39,24 @@ SvelteKit uses `adapter-static` with a `404.html` fallback. The base path is `/G
 
 ## Target system
 
-The repository will evolve into one modular monolith with Reader, Library, Identity, Catalog,
-Content, Commerce, Entitlements, Notification, Publisher, Administration, and Audit modules. It
-starts as one deployable application and database; each module owns its tables and communicates
-through explicit APIs or in-process events. External providers stay behind adapters. Services are
-split only when operational evidence justifies it.
+One repository will produce two independently deployed artifacts:
+
+```mermaid
+flowchart LR
+  P[Static PWA on GitHub Pages] -->|HTTPS API| B[Modular backend]
+  P --> I[(IndexedDB)]
+  B --> D[(Database)]
+  B --> O[(Book object storage)]
+  B --> X[Payment and email providers]
+```
+
+The PWA owns Reader and local Library behavior. It remains useful without the API and keeps personal
+books and progress on-device. The separately hosted backend owns Accounts, Catalog, Content,
+Commerce, Entitlements, Notification, Publisher, Administration, and Audit modules.
+
+The backend starts as one deployable and database. Each module owns its data and communicates
+through explicit internal APIs or events; external providers stay behind adapters. The PWA uses a
+versioned HTTPS API with an explicit GitHub Pages CORS origin. Email/password authentication uses
+short-lived JWT access tokens and a revocable refresh/session mechanism. Purchased files are
+delivered only after entitlement checks, never bundled into the static site. Backend modules split
+into services only when operational evidence justifies it.

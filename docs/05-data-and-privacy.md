@@ -25,6 +25,7 @@ EPUB archives, markup, and styles are untrusted input. `sanitize-html` filters m
 assets become object URLs. This reduces risk but is not an antivirus guarantee. Remote resources
 embedded by publications are an area for further hardening.
 
-Future store data—accounts, orders, entitlements, and publisher records—will be server-side and
-documented before implementation. Personal books and reading activity remain local by default;
-payment details remain with the payment provider.
+Future store data—email/password accounts, sessions, orders, entitlements, and publisher records—
+will be held by the backend and documented before implementation. Passwords must be hashed, tokens
+revocable, and reset links single-use and short-lived. Personal books and reading activity remain
+local by default; payment details remain with the payment provider.

@@ -31,7 +31,9 @@ roadmap work.
 Browser storage is origin-specific. Changing scheme, host, or port can make a library appear empty
 even though data remains under the old origin.
 
-## Planned server
+## Planned backend
 
-The bookstore milestones add a server runtime, database, migrations, secrets, object storage,
-background jobs, and backups. Static deployment describes the current reader only.
+The PWA remains a static GitHub Pages deployment when the bookstore launches. A separate backend
+deployment will provide the API, database, migrations, secrets, object storage, background jobs,
+and backups. Its CORS policy must allow only configured PWA origins. API URLs are public build-time
+configuration; credentials and provider secrets never enter the static build.
