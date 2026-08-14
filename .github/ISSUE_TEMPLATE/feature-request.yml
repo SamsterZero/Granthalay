@@ -1,0 +1,48 @@
+name: Feature request
+description: Propose an improvement to Granthalay
+title: '[Feature]: '
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is difficult today, and for whom?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Proposed outcome
+      description: Describe the user-visible result; implementation details are optional.
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Data and privacy impact
+      description: What would be stored or transmitted, and how could users delete or export it?
+      placeholder: None, or describe the complete lifecycle.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: EPUB and browser compatibility
+      description: Describe relevant formats, devices, accessibility, or offline behavior.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] First observable result
+        - [ ] Second observable result
+    validations:
+      required: true
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Project constraints
+      options:
+        - label: Core reading remains local-first and does not require an account or backend.
+          required: true
