@@ -16,6 +16,7 @@ Notable changes to Granthalay will be recorded here. The project follows
 - Replaced the outdated `spec/` documentation with an implementation-led `docs/` knowledge base.
 - Configure Dependabot for Bun lockfiles and keep grouped updates to minor and patch releases.
 - Move `jsdom` to development dependencies for browser-like component testing.
+- Migrate the Svelte data-table adapter to TanStack Table 9's feature and store APIs.
 
 ### Fixed
 
