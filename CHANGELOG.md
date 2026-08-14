@@ -14,6 +14,11 @@ Notable changes to Granthalay will be recorded here. The project follows
 ### Changed
 
 - Replaced the outdated `spec/` documentation with an implementation-led `docs/` knowledge base.
+- Configure Dependabot for Bun lockfiles and keep grouped updates to minor and patch releases.
+
+### Removed
+
+- Unused `jsdom` production dependency.
 
 ### Fixed
 
