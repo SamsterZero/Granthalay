@@ -11,8 +11,8 @@
 	let { chapters, currentChapterIndex, currentPageIndex, startReading }: Props = $props();
 </script>
 
-<div class="flex-1 lg:h-full lg:min-h-0 p-6 lg:p-8 overflow-y-auto">
-	<h3 class="text-lg font-semibold mb-4">Chapters</h3>
+<div class="flex-1 overflow-y-auto p-6 lg:h-full lg:min-h-0 lg:p-8">
+	<h3 class="mb-4 text-lg font-semibold">Chapters</h3>
 	<div class="space-y-2">
 		{#each chapters.filter((c) => (!c.isFrontmatter || chapters.length === 1) && !c.title.includes('(cont.)')) as chapter, index (chapter.href)}
 			{@const globalIndex = chapters.indexOf(chapter)}
@@ -20,9 +20,9 @@
 			{@const isRead = currentChapterIndex !== null && globalIndex < currentChapterIndex}
 
 			<button
-				class={`w-full flex items-center gap-4 p-4 rounded-lg border transition-all text-left ${
+				class={`flex w-full items-center gap-4 rounded-lg border p-4 text-left transition-all ${
 					isRead
-						? 'opacity-50 grayscale bg-muted/30'
+						? 'bg-muted/30 opacity-50 grayscale'
 						: isActive
 							? 'border-[#0D5C63] bg-[#0D5C63]/5 ring-1 ring-[#0D5C63]/20'
 							: 'hover:bg-accent'
@@ -30,28 +30,28 @@
 				onclick={() => startReading(globalIndex)}
 			>
 				<span
-					class={`text-sm w-8 ${isActive ? 'text-[#0D5C63] font-bold' : 'text-muted-foreground'}`}
+					class={`w-8 text-sm ${isActive ? 'font-bold text-[#0D5C63]' : 'text-muted-foreground'}`}
 				>
 					{index + 1}
 				</span>
-				<div class="flex-1 min-w-0">
-					<p class={`font-medium truncate ${isActive ? 'text-[#0D5C63]' : ''}`}>
+				<div class="min-w-0 flex-1">
+					<p class={`truncate font-medium ${isActive ? 'text-[#0D5C63]' : ''}`}>
 						{chapter.title}
 					</p>
 					{#if isActive && currentPageIndex !== null}
-						<p class="text-[10px] text-[#0D5C63]/70 font-medium mt-0.5">
+						<p class="mt-0.5 text-[10px] font-medium text-[#0D5C63]/70">
 							Currently at Page {currentPageIndex + 1}
 						</p>
 					{:else}
-						<p class="text-[10px] text-muted-foreground mt-0.5">
+						<p class="mt-0.5 text-[10px] text-muted-foreground">
 							{isRead ? 'Completed' : 'Not started'}
 						</p>
 					{/if}
 				</div>
-				<Play class={`w-4 h-4 ${isActive ? 'text-[#0D5C63]' : 'text-muted-foreground'}`} />
+				<Play class={`h-4 w-4 ${isActive ? 'text-[#0D5C63]' : 'text-muted-foreground'}`} />
 			</button>
 		{:else}
-			<p class="text-muted-foreground text-center py-8">No chapters found</p>
+			<p class="py-8 text-center text-muted-foreground">No chapters found</p>
 		{/each}
 	</div>
 </div>

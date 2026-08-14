@@ -10,15 +10,15 @@
 </script>
 
 <Button
-	class="fixed bottom-6 right-6 rounded-lg px-6 py-6 shadow-lg hover:shadow-xl transition-shadow bg-[#0D5C63] hover:bg-[#0D5C63]/90 text-white"
+	class="fixed right-6 bottom-6 rounded-lg bg-[#0D5C63] px-6 py-6 text-white shadow-lg transition-shadow hover:bg-[#0D5C63]/90 hover:shadow-xl"
 	size="lg"
 	onclick={() => startReading()}
 >
 	{#if currentChapterIndex === null}
-		<Play class="w-5 h-5 mr-2" />
+		<Play class="mr-2 h-5 w-5" />
 		Start Reading
 	{:else}
-		<Play class="w-5 h-5 mr-2" />
+		<Play class="mr-2 h-5 w-5" />
 		Resume
 	{/if}
 </Button>

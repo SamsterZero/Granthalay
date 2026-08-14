@@ -24,7 +24,7 @@ page counts. Clearing site data resets all positions.
 ## Install or offline mode fails
 
 Use HTTPS (localhost is the development exception), inspect manifest/service-worker errors, and
-reload after deployment. Custom deployments face the `/Granthalay` path caveat in
+reload after deployment. Confirm the build used the base path documented in
 [Deployment](06-deployment.md). Clear only cache—not all site storage—if preserving books matters.
 
 Contributor setup and build failures are covered in [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -311,23 +311,23 @@
 
 <div class="flex h-screen flex-col bg-background font-sans">
 	<header
-		class="flex items-center gap-2 border-b border-border bg-background px-4 py-2 shadow-sm shrink-0 h-14"
+		class="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4 py-2 shadow-sm"
 	>
 		<Button variant="ghost" size="icon" onclick={goBack} class="shrink-0">
 			<ChevronLeft class="h-5 w-5" />
 		</Button>
 
-		<div class="flex-1 min-w-0 text-left px-2">
+		<div class="min-w-0 flex-1 px-2 text-left">
 			{#if loading}
 				<div class="space-y-1.5">
 					<div class="h-3 w-32 animate-pulse rounded bg-muted"></div>
 					<div class="h-2 w-20 animate-pulse rounded bg-muted/60"></div>
 				</div>
 			{:else}
-				<h1 class="truncate text-sm font-bold text-foreground leading-tight">{bookTitle}</h1>
+				<h1 class="truncate text-sm leading-tight font-bold text-foreground">{bookTitle}</h1>
 				{#if showSubtitle && chapters[currentChapter]}
 					<p
-						class="truncate text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5 font-medium"
+						class="mt-0.5 truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
 					>
 						{chapters[currentChapter]?.title}
 					</p>
@@ -359,7 +359,7 @@
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
-				class="h-full bg-background overflow-hidden relative"
+				class="relative h-full overflow-hidden bg-background"
 				onclick={handleContentClick}
 				ontouchstart={handleTouchStart}
 				ontouchend={handleTouchEnd}
@@ -372,7 +372,7 @@
 							<div
 								class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
 							></div>
-							<p class="text-xs font-medium text-muted-foreground animate-pulse">
+							<p class="animate-pulse text-xs font-medium text-muted-foreground">
 								Arranging pages...
 							</p>
 						</div>
@@ -382,11 +382,11 @@
 				<div class="h-full w-full">
 					{#if chapters[currentChapter]?.isCover}
 						<div
-							class="h-full w-full bg-background transition-opacity duration-300 flex items-center justify-center"
+							class="flex h-full w-full items-center justify-center bg-background transition-opacity duration-300"
 							style="opacity: {isCalculating ? 0 : 1}"
 						>
 							<div
-								class="h-full w-full p-0 m-0 flex items-center justify-center overflow-hidden cover-container"
+								class="cover-container m-0 flex h-full w-full items-center justify-center overflow-hidden p-0"
 							>
 								<!-- Content is sanitized by EpubEngine before it reaches the reader. -->
 								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -394,9 +394,9 @@
 							</div>
 						</div>
 					{:else}
-						<div class="h-full w-full flex justify-center">
+						<div class="flex h-full w-full justify-center">
 							<div
-								class="h-full w-full max-w-3xl overflow-hidden bg-background px-8 py-8 shadow-sm border-x border-border"
+								class="h-full w-full max-w-3xl overflow-hidden border-x border-border bg-background px-8 py-8 shadow-sm"
 								bind:clientWidth={containerWidth}
 							>
 								<div
@@ -408,7 +408,7 @@
 								>
 									<div
 										bind:this={contentContainer}
-										class="h-full prose prose-lg max-w-none"
+										class="prose prose-lg h-full max-w-none"
 										class:is-novel-layout={isNovelMode}
 										class:is-illustrated-layout={!isNovelMode}
 										style="column-width: {isNovelMode
@@ -432,11 +432,11 @@
 		<div class="flex items-center justify-center gap-4">
 			{#if !showSubtitle}
 				<!-- Single chapter book: show global progress -->
-				<p class="text-sm text-muted-foreground font-medium">
+				<p class="text-sm font-medium text-muted-foreground">
 					Page {pagesRead} of {totalBookPages > 0 ? totalBookPages : '...'}
 				</p>
 				{#if totalBookPages > 0}
-					<div class="w-32 h-1.5 bg-muted rounded-full overflow-hidden hidden sm:block">
+					<div class="hidden h-1.5 w-32 overflow-hidden rounded-full bg-muted sm:block">
 						<div
 							class="h-full bg-[#0D5C63] transition-all duration-300"
 							style="width: {(pagesRead / totalBookPages) * 100}%"
@@ -445,7 +445,7 @@
 				{/if}
 			{:else}
 				<!-- Multi-chapter book: show per-chapter progress -->
-				<p class="text-sm text-muted-foreground font-medium">
+				<p class="text-sm font-medium text-muted-foreground">
 					Page {currentPage + 1} / {totalPages}
 				</p>
 			{/if}

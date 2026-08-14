@@ -10,8 +10,8 @@ contents, common embedded images/SVG, internal CSS, metadata, and common cover d
 - Layout mode is inferred from logical chapter count and can classify some books incorrectly.
 - Page counts are viewport-dependent estimates and may change after layout.
 - Search, bookmarks, annotations, font controls, sync, catalogs, export, and PDF are absent.
-- Duplicate imports are not detected; deletion currently leaves raw book bytes behind.
-- PWA paths currently assume the `/Granthalay` deployment.
+- Duplicate imports are not detected.
+- The PWA supports root hosting and the official `/Granthalay/` GitHub Pages deployment.
 - Automated compatibility and regression tests do not yet exist.
 
 For rendering reports, use a public-domain or minimal reproduction and include browser, OS, EPUB

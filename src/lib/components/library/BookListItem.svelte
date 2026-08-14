@@ -35,7 +35,7 @@
 
 <Item class="bg-muted p-2" onclick={() => onOpen(id)}>
 	<!-- Cover -->
-	<div class="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted flex items-center justify-center">
+	<div class="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
 		{#if coverUrl}
 			<img src={coverUrl} alt={title} class="h-full w-full object-cover" />
 		{:else}
