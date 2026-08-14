@@ -30,3 +30,8 @@ roadmap work.
 
 Browser storage is origin-specific. Changing scheme, host, or port can make a library appear empty
 even though data remains under the old origin.
+
+## Planned server
+
+The bookstore milestones add a server runtime, database, migrations, secrets, object storage,
+background jobs, and backups. Static deployment describes the current reader only.

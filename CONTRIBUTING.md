@@ -19,8 +19,8 @@ bun install
 bun run dev
 ```
 
-No environment variables or external services are required. Two public-domain EPUB fixtures are
-bundled in `static/books/`; do not add copyrighted books or unnecessarily large fixtures.
+No services are required for the current reader. Do not add copyrighted or unnecessarily large
+EPUB fixtures.
 
 ## Validate a change
 
@@ -30,9 +30,8 @@ bun run lint
 bun run build
 ```
 
-There is not yet an automated test suite. For reader or parser changes, manually verify import,
-book details, navigation, resume state, dark mode, and deletion in a fresh browser profile. Test
-both a text-heavy and illustrated EPUB when relevant.
+Until automated coverage exists, manually verify affected flows. Parser changes should use both a
+text-heavy and illustrated public-domain EPUB.
 
 ## Pull requests
 

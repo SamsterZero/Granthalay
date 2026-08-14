@@ -1,7 +1,8 @@
 # Architecture
 
-Granthalay is a fully client-side static SvelteKit application. No application server participates
-in importing, parsing, storing, or reading a book.
+## Current system
+
+Granthalay is currently a fully client-side static SvelteKit application.
 
 ```mermaid
 flowchart LR
@@ -35,3 +36,11 @@ references to object URLs. HTML is sanitized before Svelte renders it.
 
 SvelteKit uses `adapter-static` with a `404.html` fallback. The base path is `/Granthalay` only when
 `DEPLOY_TARGET=github-pages`; other builds use `/`. See [Deployment](06-deployment.md).
+
+## Target system
+
+The repository will evolve into one modular monolith with Reader, Library, Identity, Catalog,
+Content, Commerce, Entitlements, Notification, Publisher, Administration, and Audit modules. It
+starts as one deployable application and database; each module owns its tables and communicates
+through explicit APIs or in-process events. External providers stay behind adapters. Services are
+split only when operational evidence justifies it.

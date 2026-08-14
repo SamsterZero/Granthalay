@@ -11,9 +11,8 @@ The checked-in `docs/` directory is Granthalay's canonical knowledge base. It re
 - Keep reader material task-oriented and engineering material implementation-oriented.
 - Never copy copyrighted book content into examples or fixtures.
 
-The GitHub wiki, if enabled, is a discoverability layer. It may mirror the user guide, deployment,
-compatibility, and troubleshooting pages, but should link to these versioned sources and must not
-become a competing source of truth.
+The [GitHub Wiki](https://github.com/SamsterZero/Granthalay/wiki) is the reader-facing mirror. It
+links to these versioned sources and is not a competing source of truth.
 
 Review docs before releases and whenever storage, EPUB handling, deployment paths, privacy
 boundaries, or major dependencies change. Broken links and stale setup commands are bugs.

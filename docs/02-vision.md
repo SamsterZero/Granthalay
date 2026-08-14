@@ -1,7 +1,8 @@
 # Vision and Principles
 
-Granthalay makes personal EPUB reading calm, fast, and private without requiring an account or
-server. The browser is the runtime, parser, library database, and reading device.
+Granthalay combines private personal reading with an optional bookstore. Personal EPUB import and
+reading remain local and account-free; connected features are added in the same repository as a
+modular monolith.
 
 ## Principles
 
@@ -11,9 +12,10 @@ server. The browser is the runtime, parser, library database, and reading device
 - **Safe by construction:** treat every EPUB archive and document as untrusted input.
 - **Progressive capability:** installation and offline use enhance the web app but are not required.
 - **Honest compatibility:** document format limitations and regressions openly.
+- **Modular, not distributed:** enforce module ownership before introducing separate services.
 
-## Not currently in scope
+## Boundaries
 
-Accounts, cloud sync, DRM circumvention, annotation sync, a catalog/store, PDF support, and a
-server-side library are not implemented. Future proposals that add network services or transmit
-book-derived data require an explicit privacy and product decision.
+Accounts, catalog, commerce, and server storage are planned but not implemented. They must remain
+optional for personal books and must not collect reading activity by default. DRM circumvention
+and PDF support are outside the current roadmap.

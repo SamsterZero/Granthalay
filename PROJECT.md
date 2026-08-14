@@ -1,17 +1,18 @@
 # Granthalay Project Guide
 
-Granthalay is a browser-only EPUB library and reader. This file records the constraints used to
-evaluate changes; user and engineering material lives in [docs](docs/README.md).
+Granthalay is currently a browser-only EPUB reader and is planned to become a single-repository
+modular monolith with an optional bookstore. Detailed material lives in [docs](docs/README.md).
 
 ## Product constraints
 
-- Core reading works without an account or application backend.
+- Personal EPUB import and reading work without an account.
 - Imported book content and reading history stay on the user's device.
 - Network access is not required to read an already stored, self-contained EPUB after the app shell
   is available offline.
 - Untrusted EPUB markup is sanitized before insertion into the document.
 - Features should work with keyboard, pointer, and touch input where applicable.
-- Static hosting remains a supported deployment model.
+- Store, identity, catalog, commerce, and notification code remain explicit modules in this repo.
+- Module boundaries permit a later split but do not require distributed infrastructure now.
 
 ## Source of truth
 
@@ -21,10 +22,9 @@ in the same pull request. The [roadmap](docs/09-roadmap.md) communicates directi
 
 ## Definition of done
 
-A change is complete when its user-visible behavior and failure states are handled, relevant
-checks pass, accessibility and privacy effects have been considered, and affected documentation
-is current. Parser changes should be checked against multiple structurally different books and
-must preserve sanitization.
+A change is complete when behavior and failure states are handled, checks pass, accessibility and
+privacy effects are reviewed, and affected docs are current. Parser changes must preserve
+sanitization and be checked against structurally different books.
 
 ## Key references
 

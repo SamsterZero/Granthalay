@@ -24,32 +24,6 @@ telemetry.
 Granthalay is under active development. EPUB rendering can vary between publishers. See
 [Compatibility and limitations](docs/07-compatibility.md) before filing an issue.
 
-## Run locally
-
-Install [Bun](https://bun.sh/), then:
-
-```sh
-bun install
-bun run dev
-```
-
-Open the URL printed by Vite (normally `http://localhost:5173`). Useful checks are:
-
-```sh
-bun run check
-bun run lint
-bun run build
-```
-
-For a production-like static container:
-
-```sh
-docker build -t granthalay:local .
-docker run --rm -p 8080:80 granthalay:local
-```
-
-See [Development](docs/03-development.md) and [Deployment](docs/06-deployment.md) for details.
-
 ## How privacy works
 
 Imported books are processed entirely in the browser and are not uploaded by Granthalay. Browser
@@ -57,22 +31,14 @@ storage is origin-specific: clearing site data, changing the deployment URL, or 
 browser/profile produces a different library. Back up the original EPUB files separately;
 Granthalay does not currently offer library export.
 
+The roadmap evolves Granthalay into a single-repository modular monolith with optional accounts
+and a bookstore while preserving anonymous local reading.
+
 ## Documentation
 
-The [documentation hub](docs/README.md) is the maintained source of truth for behavior, design,
-storage, deployment, and project direction. It replaces the former `spec/` directory, whose
-aspirational descriptions had drifted from the implementation.
-
-- [User guide](docs/01-user-guide.md)
-- [Project vision and principles](docs/02-vision.md)
-- [Development guide](docs/03-development.md)
-- [Architecture](docs/04-architecture.md)
-- [Data and privacy](docs/05-data-and-privacy.md)
-- [Deployment and PWA](docs/06-deployment.md)
-- [Compatibility and limitations](docs/07-compatibility.md)
-- [Troubleshooting](docs/08-troubleshooting.md)
-- [Roadmap](docs/09-roadmap.md)
-- [Documentation policy](docs/10-documentation-policy.md)
+Use the [documentation hub](docs/README.md) for maintained technical documentation or the
+[GitHub Wiki](https://github.com/SamsterZero/Granthalay/wiki) for reader-friendly guides. Local
+setup, validation, and pull-request instructions live only in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Contributing and security
 

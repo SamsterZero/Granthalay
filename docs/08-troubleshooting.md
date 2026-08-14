@@ -27,7 +27,4 @@ Use HTTPS (localhost is the development exception), inspect manifest/service-wor
 reload after deployment. Custom deployments face the `/Granthalay` path caveat in
 [Deployment](06-deployment.md). Clear only cache—not all site storage—if preserving books matters.
 
-## Development build fails
-
-Run `bun install --frozen-lockfile`, `bun run check`, and `bun run build`. If formatting alone fails,
-run `bun run format` and review the diff.
+Contributor setup and build failures are covered in [CONTRIBUTING.md](../CONTRIBUTING.md).

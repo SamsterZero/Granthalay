@@ -1,7 +1,7 @@
 # Data and Privacy
 
-Granthalay has no backend and does not intentionally send imported books, metadata, or progress to
-a project service. Browser and hosting-provider behavior still applies while loading the app.
+The current reader has no backend and does not intentionally transmit imported books, metadata, or
+progress. Hosting-provider and browser behavior still applies.
 
 ## Stored data
 
@@ -24,3 +24,7 @@ recovery feature.
 EPUB archives, markup, and styles are untrusted input. `sanitize-html` filters markup and archive
 assets become object URLs. This reduces risk but is not an antivirus guarantee. Remote resources
 embedded by publications are an area for further hardening.
+
+Future store data—accounts, orders, entitlements, and publisher records—will be server-side and
+documented before implementation. Personal books and reading activity remain local by default;
+payment details remain with the payment provider.
