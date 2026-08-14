@@ -1,11 +1,21 @@
 import {
+	constructTable,
 	type RowData,
-	type TableOptions,
-	type TableOptionsResolved,
-	type TableState,
-	type Updater,
-	createTable
+	stockFeatures,
+	tableFeatures,
+	type TableOptions
 } from '@tanstack/table-core';
+import { storeReactivityBindings } from '@tanstack/table-core/store-reactivity-bindings';
+
+const features = tableFeatures({
+	...stockFeatures,
+	coreReactivityFeature: storeReactivityBindings()
+});
+
+type SvelteTableOptions<TData extends RowData> = Omit<
+	TableOptions<typeof features, TData>,
+	'features'
+>;
 
 /**
  * Creates a reactive TanStack table object for Svelte.
@@ -33,15 +43,13 @@ import {
  * </table>
  * ```
  */
-export function createSvelteTable<TData extends RowData>(options: TableOptions<TData>) {
-	const resolvedOptions: TableOptionsResolved<TData> = mergeObjects(
+export function createSvelteTable<TData extends RowData>(options: SvelteTableOptions<TData>) {
+	const resolvedOptions: TableOptions<typeof features, TData> = mergeObjects(
 		{
-			state: {},
-			onStateChange() {},
-			renderFallbackValue: null,
+			features,
 			mergeOptions: (
-				defaultOptions: TableOptions<TData>,
-				options: Partial<TableOptions<TData>>
+				defaultOptions: TableOptions<typeof features, TData>,
+				options: Partial<TableOptions<typeof features, TData>>
 			) => {
 				return mergeObjects(defaultOptions, options);
 			}
@@ -49,21 +57,15 @@ export function createSvelteTable<TData extends RowData>(options: TableOptions<T
 		options
 	);
 
-	const table = createTable(resolvedOptions);
-	let state = $state<TableState>(table.initialState);
+	const table = constructTable(resolvedOptions);
+	let revision = $state(0);
+	const subscription = table.store.subscribe(() => {
+		revision += 1;
+	});
 
 	function updateOptions() {
 		table.setOptions(() => {
-			return mergeObjects(resolvedOptions, options, {
-				state: mergeObjects(state, options.state || {}),
-
-				onStateChange: (updater: Updater<TableState>) => {
-					if (updater instanceof Function) state = updater(state);
-					else state = mergeObjects(state, updater);
-
-					options.onStateChange?.(updater);
-				}
-			});
+			return mergeObjects(resolvedOptions, options);
 		});
 	}
 
@@ -72,8 +74,14 @@ export function createSvelteTable<TData extends RowData>(options: TableOptions<T
 	$effect.pre(() => {
 		updateOptions();
 	});
+	$effect(() => () => subscription.unsubscribe());
 
-	return table;
+	return new Proxy(table, {
+		get(target, property, receiver) {
+			void revision;
+			return Reflect.get(target, property, receiver);
+		}
+	});
 }
 
 type MaybeThunk<T extends object> = T | (() => T | null | undefined);
