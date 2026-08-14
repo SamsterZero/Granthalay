@@ -16,13 +16,13 @@
 		"deploy": "gh-pages -d build -f"
 	},
 	"dependencies": {
-		"@readium/navigator": "^2.6.0",
-		"@readium/shared": "^2.2.2",
+		"@readium/navigator": "^2.8.2",
+		"@readium/shared": "^2.4.0",
 		"@sentry/sveltekit": "^10.70.0",
 		"jszip": "^3.10.1",
 		"lucide-svelte": "^1.0.1",
 		"pino": "^10.3.1",
-		"sanitize-html": "^2.17.5",
+		"sanitize-html": "^2.17.6",
 		"xmldom": "^0.6.0",
 		"zod": "^4.4.3"
 	},
