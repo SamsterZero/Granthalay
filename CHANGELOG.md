@@ -14,3 +14,7 @@ Notable changes to Granthalay will be recorded here. The project follows
 ### Changed
 
 - Replaced the outdated `spec/` documentation with an implementation-led `docs/` knowledge base.
+
+### Fixed
+
+- Delete imported-book metadata and raw EPUB bytes atomically instead of leaving orphaned content.

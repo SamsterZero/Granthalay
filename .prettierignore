@@ -5,5 +5,7 @@ yarn.lock
 bun.lock
 bun.lockb
 
-# Miscellaneous
+# Generated and vendored content
 /static/
+.cursor/skills/
+.gemini/skills/
