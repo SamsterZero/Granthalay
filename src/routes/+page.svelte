@@ -143,17 +143,10 @@
 	}
 </script>
 
-<div
-	class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4"
->
+<div class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4">
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-	<LibraryToolbar
-		viewMode={viewMode}
-		fileInput={fileInput}
-		setViewMode={setViewMode}
-		handleFileUpload={handleFileUpload}
-	/>
+	<LibraryToolbar {viewMode} {fileInput} {setViewMode} {handleFileUpload} />
 	<main class="mx-auto">
 		{#if loading}
 			<div class="flex flex-col items-center justify-center gap-4 text-foreground">

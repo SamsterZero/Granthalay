@@ -1,0 +1,68 @@
+name: Bug report
+description: Report reproducible broken or unexpected behavior
+title: '[Bug]: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach copyrighted EPUBs. Use a public-domain or minimal reproduction.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and its impact.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Import ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: Commit SHA or deployment date
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      placeholder: Firefox 142, Fedora 42
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Deployment
+      options: [Official GitHub Pages, Local development, Container, Other static host]
+    validations:
+      required: true
+  - type: textarea
+    id: epub
+    attributes:
+      label: EPUB characteristics
+      description: EPUB version, fixed/reflowable, text/illustrated, and a legal minimal fixture link if available.
+  - type: textarea
+    id: context
+    attributes:
+      label: Screenshots, console errors, or additional context
+  - type: checkboxes
+    id: legal
+    attributes:
+      label: Content check
+      options:
+        - label: I have not attached copyrighted or private book content.
+          required: true

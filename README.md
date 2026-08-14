@@ -1,51 +1,53 @@
 # Granthalay
 
-A premium, local-first EPUB reader built with SvelteKit and Svelte 5.
+Granthalay is a private, local-first EPUB library and reader built with SvelteKit and Svelte 5.
+Books are parsed and stored in the browser: there is no account, server-side library, or reading
+telemetry.
 
-![Reader Mockup](https://raw.githubusercontent.com/SamsterZero/reader/main/static/icon-512.png)
+<p align="center">
+  <img src="static/icon-512.png" width="160" alt="Granthalay app icon">
+</p>
 
-## Features
+**Quick links:** [Try it](https://samsterzero.github.io/Granthalay/) ·
+[User guide](docs/01-user-guide.md) · [Architecture](docs/04-architecture.md) ·
+[Troubleshooting](docs/08-troubleshooting.md) · [Contributing](CONTRIBUTING.md)
 
-- **Dual-Mode Layout**: Automatically switches between multi-column pagination for novels and "Fit-to-Screen" mode for illustrated books (e.g., Diary of a Wimpy Kid).
-- **High-Fidelity Rendering**: Advanced SVG support with coordinate preservation (viewBox) and real-time resource resolution for all book assets.
-- **Local-First**: All your books stay in your browser using IndexedDB. No accounts, no tracking.
-- **Modern UI**: Clean, aesthetic interface with dark mode, skeleton loaders, and smooth transitions.
-- **Smart Progress**: Tracks position at both the chapter and global book level, with a dedicated "Resume/Start" workflow.
-- **PWA**: Installable as a native app on iOS, Android, and Desktop.
+## What it does
 
-## Tech Stack
+- Imports `.epub` files and extracts metadata, cover, spine, and table of contents in the browser.
+- Keeps uploaded books and reading position in IndexedDB; preferences use local storage.
+- Provides list, compact-grid, and comfortable-grid library views.
+- Switches between column pagination and a fit-to-screen presentation for illustrated books.
+- Supports click/tap regions, swipes, arrow keys, and Space for page navigation.
+- Includes dark mode and an installable PWA shell.
 
-- **Framework**: SvelteKit 2.0 (Svelte 5 Runes)
-- **Database**: Dexie.js (IndexedDB)
-- **Styling**: Vanilla CSS + Tailwind Typography
-- **Icons**: Lucide Svelte
+Granthalay is under active development. EPUB rendering can vary between publishers. See
+[Compatibility and limitations](docs/07-compatibility.md) before filing an issue.
 
-## Getting Started
+## How privacy works
 
-### Development
+Imported books are processed entirely in the browser and are not uploaded by Granthalay. Browser
+storage is origin-specific: clearing site data, changing the deployment URL, or using a different
+browser/profile produces a different library. Back up the original EPUB files separately;
+Granthalay does not currently offer library export.
 
-```bash
-# Install dependencies
-bun install
-
-# Run dev server
-bun run dev
-```
-
-### Building for Production
-
-```bash
-bun run build
-```
+The roadmap adds an optional bookstore without changing the reader's static-PWA foundation. The
+PWA remains deployable to GitHub Pages; a separately hosted modular backend provides accounts,
+catalog, purchases, entitlements, and book delivery. Anonymous local reading remains independent
+of that backend.
 
 ## Documentation
 
-Detailed specifications can be found in the `/spec` directory:
+Use the [documentation hub](docs/README.md) for maintained technical documentation or the
+[GitHub Wiki](https://github.com/SamsterZero/Granthalay/wiki) for reader-friendly guides. Local
+setup, validation, and pull-request instructions live only in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-- [Architecture](./spec/architecture.md)
-- [Features](./spec/features.md)
-- [Data Model](./spec/data_model.md)
+## Contributing and security
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. Report vulnerabilities
+privately as described in [SECURITY.md](SECURITY.md). Community participation is governed by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
-MIT
+Granthalay is licensed under the [MIT License](LICENSE).
