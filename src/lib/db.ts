@@ -154,11 +154,23 @@ export async function getBookById(id: string): Promise<BookRecord | null> {
 export async function deleteBookById(id: string): Promise<void> {
 	const db = await getDB();
 	return new Promise((resolve, reject) => {
-		const transaction = db.transaction(STORE_NAME, 'readwrite');
-		const store = transaction.objectStore(STORE_NAME);
-		const request = store.delete(id);
-		request.onsuccess = () => resolve();
-		request.onerror = () => reject(request.error);
+		const transaction = db.transaction([STORE_NAME, 'bookContents'], 'readwrite');
+		let setupError: unknown;
+
+		transaction.oncomplete = () => resolve();
+		transaction.onerror = () => reject(transaction.error);
+		transaction.onabort = () =>
+			reject(
+				setupError ?? transaction.error ?? new DOMException('Book deletion aborted', 'AbortError')
+			);
+
+		try {
+			transaction.objectStore(STORE_NAME).delete(id);
+			transaction.objectStore('bookContents').delete(id);
+		} catch (error) {
+			setupError = error;
+			transaction.abort();
+		}
 	});
 }
 

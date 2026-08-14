@@ -10,6 +10,7 @@
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest run",
 		"lint": "prettier --check . && eslint . --concurrency auto",
 		"format": "prettier --write .",
 		"deploy": "gh-pages -d build -f"
@@ -48,6 +49,7 @@
 		"eslint": "^10.5.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
+		"fake-indexeddb": "^6.2.5",
 		"formsnap": "^2.0.1",
 		"gh-pages": "^6.3.0",
 		"globals": "^17.6.0",
@@ -69,6 +71,7 @@
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.61.1",
 		"vaul-svelte": "^1.0.0-next.7",
-		"vite": "^8.0.16"
+		"vite": "^8.0.16",
+		"vitest": "^4.1.10"
 	}
 }
