@@ -1,4 +1,7 @@
-# User Guide
+# Implemented Reader Behavior
+
+This file records user-visible behavior as implementation context for developers and AI agents. It
+is not the reader guide; maintain reader instructions in the GitHub Wiki.
 
 ## Add and organize books
 

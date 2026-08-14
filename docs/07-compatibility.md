@@ -12,7 +12,10 @@ contents, common embedded images/SVG, internal CSS, metadata, and common cover d
 - Search, bookmarks, annotations, font controls, sync, catalogs, export, and PDF are absent.
 - Duplicate imports are not detected.
 - The PWA supports root hosting and the official `/Granthalay/` GitHub Pages deployment.
-- Automated compatibility and regression tests do not yet exist.
+
+Automated regression fixtures cover representative EPUB 2 and EPUB 3 package structures, NCX and
+EPUB navigation, spine order, internal CSS, raster and SVG resources, and malformed archives. This
+is a focused baseline rather than a complete EPUB conformance suite.
 
 For rendering reports, use a public-domain or minimal reproduction and include browser, OS, EPUB
 version, fixed/reflowable layout, and screenshots. Never upload a copyrighted EPUB.
