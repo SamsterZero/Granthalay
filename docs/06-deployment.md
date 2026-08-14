@@ -37,3 +37,8 @@ The PWA remains a static GitHub Pages deployment when the bookstore launches. A 
 deployment will provide the API, database, migrations, secrets, object storage, background jobs,
 and backups. Its CORS policy must allow only configured PWA origins. API URLs are public build-time
 configuration; credentials and provider secrets never enter the static build.
+
+Zod needs no deployment service. Pino writes structured backend logs to standard output for the
+hosting platform to collect. Sentry DSNs and release identifiers are deployment configuration;
+Sentry remains inactive until initialization is deliberately added and reviewed against the
+privacy policy.

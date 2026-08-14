@@ -60,3 +60,8 @@ versioned HTTPS API with an explicit GitHub Pages CORS origin. Email/password au
 short-lived JWT access tokens and a revocable refresh/session mechanism. Purchased files are
 delivered only after entitlement checks, never bundled into the static site. Backend modules split
 into services only when operational evidence justifies it.
+
+Zod validates shared contracts and untrusted input at runtime. Pino provides structured backend
+logs with field redaction. Sentry is an optional diagnostics adapter for both deployables, disabled
+unless configured and supplied only scrubbed errors. Installing these packages does not enable
+logging or telemetry by itself.

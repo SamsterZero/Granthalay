@@ -29,3 +29,11 @@ Future store data—email/password accounts, sessions, orders, entitlements, and
 will be held by the backend and documented before implementation. Passwords must be hashed, tokens
 revocable, and reset links single-use and short-lived. Personal books and reading activity remain
 local by default; payment details remain with the payment provider.
+
+## Diagnostics
+
+Pino logs must use allow-listed fields and redact credentials, tokens, email addresses, book
+content, reading activity, and payment data. Sentry remains disabled unless a deployment explicitly
+configures it. Before activation, configure event scrubbing, disable session replay, minimize
+sampling, and document consent and retention. Never attach EPUB files, chapter text, library
+metadata, request bodies, authorization headers, or Pino log payloads to Sentry events.
