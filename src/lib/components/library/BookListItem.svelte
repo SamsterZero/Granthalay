@@ -33,10 +33,7 @@
 	});
 </script>
 
-<Item
-	class="bg-muted p-2"
-	onclick={() => onOpen(id)}
->
+<Item class="bg-muted p-2" onclick={() => onOpen(id)}>
 	<!-- Cover -->
 	<div class="h-16 w-12 shrink-0 overflow-hidden rounded bg-muted flex items-center justify-center">
 		{#if coverUrl}

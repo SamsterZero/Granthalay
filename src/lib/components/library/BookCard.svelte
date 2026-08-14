@@ -33,14 +33,16 @@
 
 <div class="group">
 	<AspectRatio
-		ratio={2/3}
+		ratio={2 / 3}
 		class="relative rounded-xl overflow-hidden shadow-md cursor-pointer transition hover:-translate-y-1 hover:shadow-xl"
 		onclick={() => onOpen(id)}
 		role="button"
 	>
 		<!-- Progress Badge -->
 		{#if progress && progress > 0}
-			<div class="absolute top-2 left-2 z-20 bg-[#0D5C63] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md border border-white/20">
+			<div
+				class="absolute top-2 left-2 z-20 bg-[#0D5C63] text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-sm backdrop-blur-md border border-white/20"
+			>
 				{Math.round(progress * 100)}%
 			</div>
 		{/if}
@@ -52,14 +54,20 @@
 				style="background-image: url({coverUrl})"
 			></div>
 		{:else}
-			<div class="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold">
+			<div
+				class="absolute inset-0 flex items-center justify-center bg-linear-to-br from-[#0D5C63] to-[#094a50] text-white text-5xl font-bold"
+			>
 				<span>{getInitials(title)}</span>
 			</div>
 		{/if}
 
 		<!-- Title Overlay -->
-		<div class="absolute inset-x-0 bottom-0 p-3 pt-8 bg-linear-to-t from-black/90 via-black/40 to-transparent">
-			<h3 class="m-0 text-sm font-semibold text-white leading-snug line-clamp-2 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)]">
+		<div
+			class="absolute inset-x-0 bottom-0 p-3 pt-8 bg-linear-to-t from-black/90 via-black/40 to-transparent"
+		>
+			<h3
+				class="m-0 text-sm font-semibold text-white leading-snug line-clamp-2 [text-shadow:0_1px_3px_rgba(0,0,0,0.5)]"
+			>
 				{title}
 			</h3>
 		</div>

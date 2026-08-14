@@ -36,8 +36,7 @@ function getDB(): Promise<IDBDatabase> {
 			}
 			if (!db.objectStoreNames.contains('bookContents')) {
 				db.createObjectStore('bookContents');
-			}
-			else if (oldVersion === 1) {
+			} else if (oldVersion === 1) {
 				// v1 store exists, no structural changes needed
 				// Migration happens lazily in getAllBooks
 			}
@@ -90,7 +89,7 @@ export async function saveBook(
 
 	const db = await getDB();
 	const id = crypto.randomUUID();
-	
+
 	const metadata: BookMetadata = {
 		id,
 		name,
@@ -103,7 +102,7 @@ export async function saveBook(
 		const transaction = db.transaction([STORE_NAME, 'bookContents'], 'readwrite');
 		const metaStore = transaction.objectStore(STORE_NAME);
 		const contentStore = transaction.objectStore('bookContents');
-		
+
 		metaStore.put(metadata, id);
 		contentStore.put(buffer, id);
 
@@ -164,14 +163,17 @@ export async function deleteBookById(id: string): Promise<void> {
 }
 
 export async function updateBookProgress(
-	id: string, 
-	progress: number, 
-	currentChapter?: number, 
+	id: string,
+	progress: number,
+	currentChapter?: number,
 	currentPage?: number,
 	totalBookPages?: number
 ): Promise<void> {
 	if (id === 'default') {
-		localStorage.setItem('book-progress-default', JSON.stringify({ progress, currentChapter, currentPage, totalBookPages }));
+		localStorage.setItem(
+			'book-progress-default',
+			JSON.stringify({ progress, currentChapter, currentPage, totalBookPages })
+		);
 		return;
 	}
 

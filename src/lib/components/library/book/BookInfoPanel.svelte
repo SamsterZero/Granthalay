@@ -3,11 +3,10 @@
 		coverUrl: string | null;
 		title: string;
 		author: string;
-        description: string;
-
+		description: string;
 	}
 	let { coverUrl, title, author, description }: Props = $props();
-    function getInitials(name: string): string {
+	function getInitials(name: string): string {
 		return name.charAt(0).toUpperCase();
 	}
 </script>
