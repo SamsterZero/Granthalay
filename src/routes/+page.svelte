@@ -143,7 +143,7 @@
 	}
 </script>
 
-<div class="h-screen bg-background text-foreground font-sans transition-colors duration-300 p-4">
+<div class="h-screen bg-background p-4 font-sans text-foreground transition-colors duration-300">
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
 	<LibraryToolbar {viewMode} {fileInput} {setViewMode} {handleFileUpload} />
@@ -179,7 +179,7 @@
 			{/if}
 			{#if viewMode === 'compact'}
 				<div
-					class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-4"
+					class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7"
 				>
 					{#if defaultBook}
 						<BookCard
@@ -204,7 +204,7 @@
 			{/if}
 			{#if viewMode === 'comfortable'}
 				<div
-					class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+					class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
 				>
 					{#if defaultBook}
 						<BookCard

@@ -12,14 +12,14 @@
 	let { darkMode, showInstall, onTheme, onInstall }: Props = $props();
 </script>
 
-<nav class="flex items-center justify-between mb-4 text-foreground">
-	<div class="w-10 h-10 rounded bg-[#0D5C63] flex items-center justify-center">
-		<span class="text-white font-semibold">ग्रं</span>
+<nav class="mb-4 flex items-center justify-between text-foreground">
+	<div class="flex h-10 w-10 items-center justify-center rounded bg-[#0D5C63]">
+		<span class="font-semibold text-white">ग्रं</span>
 	</div>
 	<div class="flex items-center gap-3">
 		{#if showInstall}
 			<Button
-				class="bg-[#0D5C63] text-white rounded-full hover:bg-[#094A50] cursor-pointer"
+				class="cursor-pointer rounded-full bg-[#0D5C63] text-white hover:bg-[#094A50]"
 				onclick={onInstall}
 			>
 				<Download size={20} />
@@ -28,7 +28,7 @@
 		<Button
 			variant="outline"
 			size="icon"
-			class="rounded-full cursor-pointer"
+			class="cursor-pointer rounded-full"
 			onclick={onTheme}
 			title="Toggle theme"
 		>

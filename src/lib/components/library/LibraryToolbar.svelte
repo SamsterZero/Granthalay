@@ -15,7 +15,7 @@
 	let { viewMode, fileInput, setViewMode, handleFileUpload }: Props = $props();
 </script>
 
-<div class="pb-4 flex justify-between">
+<div class="flex justify-between pb-4">
 	<ButtonGroup aria-label="Button group">
 		<Button
 			variant={viewMode === 'list' ? 'default' : 'secondary'}
@@ -51,7 +51,7 @@
 		<Button
 			variant="default"
 			size="icon"
-			class="rounded-full cursor-pointer"
+			class="cursor-pointer rounded-full"
 			onclick={() => fileInput?.click()}
 			title="Upload EPUB"
 		>

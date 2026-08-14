@@ -11,13 +11,13 @@
 	let { title, loading, goBack }: Props = $props();
 </script>
 
-<nav class="border-b px-6 py-4 flex items-center gap-4 shrink-0">
+<nav class="flex shrink-0 items-center gap-4 border-b px-6 py-4">
 	<Button variant="ghost" size="icon" onclick={goBack}>
 		<ChevronLeft class="h-4 w-4" />
 	</Button>
 	{#if loading && title === 'Unknown Book'}
 		<Skeleton class="h-6 w-48" />
 	{:else}
-		<h1 class="font-semibold text-lg line-clamp-1">{title}</h1>
+		<h1 class="line-clamp-1 text-lg font-semibold">{title}</h1>
 	{/if}
 </nav>

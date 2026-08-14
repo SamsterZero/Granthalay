@@ -123,21 +123,21 @@
 	}
 </script>
 
-<div class="min-h-screen lg:h-screen bg-background flex flex-col">
+<div class="flex min-h-screen flex-col bg-background lg:h-screen">
 	<!-- Header -->
 	<TopBar {title} {loading} {goBack} />
 	{#if loading}
 		<BookDetailsSkeleton />
 	{:else if error}
-		<div class="flex-1 flex items-center justify-center p-8">
+		<div class="flex flex-1 items-center justify-center p-8">
 			<div class="text-center">
-				<p class="text-destructive mb-4">{error}</p>
+				<p class="mb-4 text-destructive">{error}</p>
 				<Button onclick={goBack}>Go Back</Button>
 			</div>
 		</div>
 	{:else}
 		<!-- Two Panel Layout -->
-		<div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-0">
+		<div class="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
 			<!-- Left Panel: Cover -->
 			<BookInfoPanel {coverUrl} {title} {author} {description} />
 
