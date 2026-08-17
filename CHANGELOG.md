@@ -23,3 +23,4 @@ Notable changes to Granthalay will be recorded here. The project follows
 
 - Delete imported-book metadata and raw EPUB bytes atomically instead of leaving orphaned content.
 - Generate PWA manifest, asset, navigation, and offline fallback paths from the deployment base.
+- Block imported EPUB markup and styles from loading remote or unmediated resources.

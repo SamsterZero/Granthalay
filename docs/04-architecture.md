@@ -34,6 +34,12 @@ The engine follows `META-INF/container.xml` to the package document, maps manife
 loads EPUB 3 navigation or EPUB 2 NCX labels, extracts/scopes CSS, and converts archive resource
 references to object URLs. HTML is sanitized before Svelte renders it.
 
+Imported content cannot initiate network requests. The engine removes remote, absolute, missing,
+and imported blob references from markup and styles; it strips CSS imports and image sets. Packaged
+images and CSS resources are mediated through engine-owned blob URLs, which are revoked when the
+engine is destroyed. Data URLs are limited to image elements, while scripts, frames, forms, and
+navigable links do not cross the sanitizer boundary.
+
 SvelteKit uses `adapter-static` with a `404.html` fallback. The base path is `/Granthalay` only when
 `DEPLOY_TARGET=github-pages`; other builds use `/`. See [Deployment](06-deployment.md).
 
