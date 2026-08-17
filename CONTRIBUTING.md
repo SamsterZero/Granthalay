@@ -25,18 +25,20 @@ EPUB fixtures.
 ## Validate a change
 
 ```sh
+bun run test
 bun run check
 bun run lint
-bun run build
+bun run verify:build
 ```
 
-Until automated coverage exists, manually verify affected flows. Parser changes should use both a
-text-heavy and illustrated public-domain EPUB.
+Before submitting release PRs or major changes, run through the release smoke checklist in
+[Compatibility](docs/07-compatibility.md) on a supported browser engine. Parser changes should use
+both a text-heavy and illustrated public-domain EPUB.
 
 ## Pull requests
 
 - Link the relevant issue and explain the user-visible outcome.
-- List the exact automated and manual checks performed.
+- List the exact automated and manual checks performed against the release smoke checklist.
 - Include screenshots or a recording for visible changes.
 - Call out changes to IndexedDB, local storage, caching, network behavior, or EPUB sanitization.
 - Update the relevant document and avoid unrelated generated or formatting changes.
