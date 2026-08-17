@@ -3,7 +3,9 @@
 ## My library is empty
 
 Use the same browser profile and exact site origin. `http` vs `https`, another port or host, cleared
-site data, and private browsing can produce a separate empty library.
+site data, and private browsing can produce a separate empty library. Verify your browser engine meets
+the minimum version requirements (Chromium 109+, Firefox 115+, Safari 16.4+) listed in
+[Compatibility](07-compatibility.md).
 
 ## A book will not import or open
 
