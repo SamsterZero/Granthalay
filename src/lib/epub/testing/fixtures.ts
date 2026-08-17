@@ -107,6 +107,44 @@ export async function createEpub3Fixture(): Promise<ArrayBuffer> {
 	return zip.generateAsync({ type: 'arraybuffer', mimeType: 'application/epub+zip' });
 }
 
+export async function createRemoteResourceFixture(): Promise<ArrayBuffer> {
+	const zip = new JSZip();
+	addRequiredFiles(zip);
+	zip.file(
+		'OEBPS/content.opf',
+		`<package version="3.0" xmlns="http://www.idpf.org/2007/opf">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Remote resources</dc:title></metadata>
+  <manifest>
+    <item id="chapter" href="chapter.xhtml" media-type="application/xhtml+xml"/>
+    <item id="styles" href="book.css" media-type="text/css"/>
+    <item id="pixel" href="pixel.png" media-type="image/png"/>
+  </manifest>
+  <spine><itemref idref="chapter"/></spine>
+</package>`
+	);
+	zip.file(
+		'OEBPS/chapter.xhtml',
+		`<html><head><link rel="stylesheet" href="book.css"/></head><body>
+  <img src="https://tracker.invalid/read?id=1" alt="Remote tracker"/>
+  <img src="pixel.png" alt="Packaged image"/>
+  <img src="missing.png" alt="Missing image"/>
+  <svg><image href="//tracker.invalid/svg"/></svg>
+  <p style="background-image: url('https://tracker.invalid/inline')">Private reading</p>
+  <iframe src="https://tracker.invalid/frame"></iframe>
+</body></html>`
+	);
+	zip.file(
+		'OEBPS/book.css',
+		`@import url("https://tracker.invalid/import.css");
+.remote { background: url(https://tracker.invalid/cover.png); }
+.packaged { background: url("pixel.png"); }
+.missing { background: url("missing.png"); }
+.set { background-image: image-set("https://tracker.invalid/two.png" 2x); }`
+	);
+	zip.file('OEBPS/pixel.png', PNG_PIXEL);
+	return zip.generateAsync({ type: 'arraybuffer', mimeType: 'application/epub+zip' });
+}
+
 export async function createMalformedEpubFixture(
 	kind: 'missing-container' | 'missing-rootfile' | 'missing-opf'
 ): Promise<ArrayBuffer> {

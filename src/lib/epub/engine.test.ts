@@ -6,7 +6,8 @@ import { EpubEngine } from './engine';
 import {
 	createEpub2Fixture,
 	createEpub3Fixture,
-	createMalformedEpubFixture
+	createMalformedEpubFixture,
+	createRemoteResourceFixture
 } from './testing/fixtures';
 
 describe('EpubEngine fixtures', () => {
@@ -56,6 +57,21 @@ describe('EpubEngine fixtures', () => {
 		expect(chapters[0].css).toContain('background-image: url("blob:fixture-');
 		expect(chapters[1].content).toContain('<svg');
 		expect(chapters[1].content).toContain('href="blob:fixture-');
+	});
+
+	it('blocks remote and missing resources while preserving packaged assets', async () => {
+		const engine = new EpubEngine(await createRemoteResourceFixture());
+		const spine = await engine.init();
+		const [chapter] = await engine.parseChapters(spine ?? []);
+		const rendered = `${chapter.content}\n${chapter.css}`;
+
+		expect(rendered).not.toMatch(/https?:|\/\/tracker\.invalid|@import|image-set/i);
+		expect(chapter.content).toContain('alt="Remote tracker"');
+		expect(chapter.content).not.toContain('missing.png');
+		expect(chapter.content).not.toContain('<iframe');
+		expect(chapter.content).toContain('src="blob:fixture-');
+		expect(chapter.css).toContain('url("blob:fixture-');
+		expect(chapter.css).toContain('background: none');
 	});
 
 	it.each([

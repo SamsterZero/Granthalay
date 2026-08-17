@@ -231,14 +231,31 @@ export class EpubEngine {
 	}
 
 	private async processCSS(cssContent: string, cssFilePath: string): Promise<string> {
-		const urlRegex = /url\(['"]?([^'")]+)['"]?\)/g;
+		const decodedCSS = cssContent.replace(/\\([0-9a-f]{1,6}\s?|.)/gi, (_match, escape: string) =>
+			String.fromCodePoint(
+				/^[0-9a-f]/i.test(escape) ? Number.parseInt(escape.trim(), 16) : escape.codePointAt(0)!
+			)
+		);
+		if (/url\s*\(|@import\b|image-set\s*\(/i.test(decodedCSS) && !/url\s*\(/i.test(cssContent)) {
+			return '';
+		}
+
+		const withoutImports = cssContent
+			.replace(/@import\s+(?:url\([^)]*\)|"[^"]*"|'[^']*')[^;]*;?/gi, '')
+			.replace(/(?:-webkit-)?image-set\s*\([^;}]*(?:\)|$)/gi, 'none');
+		const urlRegex = /url\(\s*(['"]?)(.*?)\1\s*\)/gi;
 		const replacements = new Map<string, string>();
-		const matches = Array.from(cssContent.matchAll(urlRegex));
+		const matches = Array.from(withoutImports.matchAll(urlRegex));
 
 		await Promise.all(
 			matches.map(async (match) => {
-				const resourceUrl = match[1];
-				if (resourceUrl.startsWith('data:') || resourceUrl.startsWith('http')) return;
+				const resourceUrl = match[2].trim();
+				if (resourceUrl.startsWith('#') || resourceUrl.startsWith('data:')) return;
+				if (this.blobUrls.includes(resourceUrl)) return;
+				if (this.isAbsoluteResource(resourceUrl)) {
+					replacements.set(resourceUrl, 'none');
+					return;
+				}
 
 				const fullPath = this.resolvePath(cssFilePath, resourceUrl);
 				try {
@@ -246,14 +263,28 @@ export class EpubEngine {
 					if (resourceFile) {
 						const blob = await resourceFile.async('blob');
 						replacements.set(resourceUrl, `url("${this.createObjectURL(blob)}")`);
+					} else {
+						replacements.set(resourceUrl, 'none');
 					}
 				} catch (e) {
 					console.warn(`[EpubEngine] CSS resource failed: ${fullPath}`, e);
+					replacements.set(resourceUrl, 'none');
 				}
 			})
 		);
 
-		return cssContent.replace(urlRegex, (match, url) => replacements.get(url) || match);
+		return withoutImports.replace(urlRegex, (match, _quote, url: string) => {
+			const resourceUrl = url.trim();
+			return replacements.get(resourceUrl) || match;
+		});
+	}
+
+	private isAbsoluteResource(resourceUrl: string): boolean {
+		return (
+			resourceUrl.startsWith('/') ||
+			resourceUrl.startsWith('\\') ||
+			/^[a-z][a-z\d+.-]*:/i.test(resourceUrl)
+		);
 	}
 
 	async parseChapters(
@@ -380,7 +411,7 @@ export class EpubEngine {
 								],
 								image: ['xlink:href', 'href', 'width', 'height', 'x', 'y', 'preserveAspectRatio']
 							},
-							allowedSchemes: ['data', 'blob', 'http', 'https']
+							allowedSchemes: ['data', 'blob']
 						});
 
 						chapters.push({
@@ -457,12 +488,9 @@ export class EpubEngine {
 		for (const img of images) {
 			const src = img.getAttribute('src');
 			if (src) {
-				const fullImagePath = this.resolvePath(contentFilePath, src);
-				const imageFile = this.epub!.file(fullImagePath);
-				if (imageFile) {
-					const imageBlob = await imageFile.async('blob');
-					img.setAttribute('src', this.createObjectURL(imageBlob));
-				}
+				const resolved = await this.resolveImageResource(src, contentFilePath);
+				if (resolved) img.setAttribute('src', resolved);
+				else img.removeAttribute('src');
 			}
 		}
 
@@ -470,15 +498,20 @@ export class EpubEngine {
 		for (const svgImg of svgImages) {
 			const hrefAttr = svgImg.getAttribute('xlink:href') || svgImg.getAttribute('href');
 			if (hrefAttr) {
-				const fullImagePath = this.resolvePath(contentFilePath, hrefAttr);
-				const imageFile = this.epub!.file(fullImagePath);
-				if (imageFile) {
-					const imageBlob = await imageFile.async('blob');
-					const imageUrl = this.createObjectURL(imageBlob);
+				const imageUrl = await this.resolveImageResource(hrefAttr, contentFilePath);
+				if (imageUrl) {
 					svgImg.setAttribute('xlink:href', imageUrl);
 					svgImg.setAttribute('href', imageUrl);
+				} else {
+					svgImg.removeAttribute('xlink:href');
+					svgImg.removeAttribute('href');
 				}
 			}
+		}
+
+		for (const element of doc.querySelectorAll<HTMLElement>('[style]')) {
+			const style = element.getAttribute('style');
+			if (style) element.setAttribute('style', await this.processCSS(style, contentFilePath));
 		}
 
 		const svgElements = doc.querySelectorAll('svg');
@@ -494,6 +527,21 @@ export class EpubEngine {
 				}
 			}
 		}
+	}
+
+	private async resolveImageResource(
+		resourceUrl: string,
+		contentFilePath: string
+	): Promise<string | null> {
+		const trimmedUrl = resourceUrl.trim();
+		if (/^data:image\//i.test(trimmedUrl)) return trimmedUrl;
+		if (this.blobUrls.includes(trimmedUrl) || this.isAbsoluteResource(trimmedUrl)) return null;
+
+		const fullImagePath = this.resolvePath(contentFilePath, trimmedUrl.split('#')[0]);
+		const imageFile = this.epub!.file(fullImagePath);
+		if (!imageFile) return null;
+
+		return this.createObjectURL(await imageFile.async('blob'));
 	}
 
 	private async extractCover(opfDoc: Document) {

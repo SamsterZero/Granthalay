@@ -15,7 +15,9 @@ contents, common embedded images/SVG, internal CSS, metadata, and common cover d
 
 Automated regression fixtures cover representative EPUB 2 and EPUB 3 package structures, NCX and
 EPUB navigation, spine order, internal CSS, raster and SVG resources, and malformed archives. This
-is a focused baseline rather than a complete EPUB conformance suite.
+is a focused baseline rather than a complete EPUB conformance suite. Remote resources, CSS imports,
+missing resource fallbacks, and embedded frames are intentionally blocked so opening a publication
+does not disclose reader activity. Books must package every resource needed for offline rendering.
 
 For rendering reports, use a public-domain or minimal reproduction and include browser, OS, EPUB
 version, fixed/reflowable layout, and screenshots. Never upload a copyrighted EPUB.
