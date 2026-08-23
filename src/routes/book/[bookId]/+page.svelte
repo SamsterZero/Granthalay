@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { assets, resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { getBookById, type BookRecord } from '$lib/db';
 	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
@@ -43,11 +43,11 @@
 			let storedTitle: string | null = null;
 
 			if (bookId === 'default') {
-				const response = await fetch('/books/pg78627-images-3.epub');
+				const response = await fetch(`${assets}/books/pg78627-images-3.epub`);
 				if (!response.ok) throw new Error('Failed to load default book');
 				arrayBuffer = await response.arrayBuffer();
 			} else if (bookId === 'test-user-book') {
-				const response = await fetch('/books/pg5827-images-3.epub');
+				const response = await fetch(`${assets}/books/pg5827-images-3.epub`);
 				if (!response.ok) throw new Error('Failed to load test user book');
 				arrayBuffer = await response.arrayBuffer();
 			} else {
