@@ -1,17 +1,17 @@
 {
-  "Chromium/Blink": {
-    "minVersion": "109",
-    "platforms": ["Windows", "macOS", "Linux", "ChromeOS", "Android"],
-    "notes": "Full PWA installation, offline precaching, atomic IndexedDB storage, Blob URL resource rendering."
-  },
-  "Gecko/Firefox": {
-    "minVersion": "115",
-    "platforms": ["Windows", "macOS", "Linux", "Android"],
-    "notes": "Full reader and IndexedDB storage support; PWA installation dependent on platform support."
-  },
-  "WebKit/Safari": {
-    "minVersion": "16.4",
-    "platforms": ["macOS", "iOS", "iPadOS"],
-    "notes": "Full reader support, Add to Home Screen (PWA), IndexedDB storage, Blob URLs."
-  }
+	"Chromium/Blink": {
+		"minVersion": "109",
+		"platforms": ["Windows", "macOS", "Linux", "ChromeOS", "Android"],
+		"notes": "Full PWA installation, offline precaching, atomic IndexedDB storage, Blob URL resource rendering."
+	},
+	"Gecko/Firefox": {
+		"minVersion": "115",
+		"platforms": ["Windows", "macOS", "Linux", "Android"],
+		"notes": "Full reader and IndexedDB storage support; PWA installation dependent on platform support."
+	},
+	"WebKit/Safari": {
+		"minVersion": "16.4",
+		"platforms": ["macOS", "iOS", "iPadOS"],
+		"notes": "Full reader support, Add to Home Screen (PWA), IndexedDB storage, Blob URLs."
+	}
 }
