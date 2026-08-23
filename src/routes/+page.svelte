@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { assets, resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import { saveBook, getAllBooks, deleteBookById, type BookMetadata } from '$lib/db';
 	import { EpubEngine } from '$lib/epub/engine';
@@ -53,7 +53,7 @@
 		books = await getAllBooks();
 
 		try {
-			const response = await fetch(`/books/pg78627-images-3.epub`);
+			const response = await fetch(`${assets}/books/pg78627-images-3.epub`);
 			if (response.ok) {
 				const buffer = await response.arrayBuffer();
 				const engine = new EpubEngine(buffer);
