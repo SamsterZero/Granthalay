@@ -20,7 +20,7 @@
 	"dependencies": {
 		"@readium/navigator": "^2.8.2",
 		"@readium/shared": "^2.4.0",
-		"@sentry/sveltekit": "^10.70.0",
+		"@sentry/sveltekit": "^10.71.0",
 		"jszip": "^3.10.1",
 		"lucide-svelte": "^1.0.1",
 		"pino": "^10.3.1",
