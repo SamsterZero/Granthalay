@@ -34,3 +34,9 @@ Home Screen** menu. Availability depends on HTTPS, browser support, and the depl
 
 Keep the original EPUBs. Clearing site data removes imported books and progress, and Granthalay
 does not currently export or synchronize a library. See [Data and privacy](05-data-and-privacy.md).
+
+## Stable reading position
+
+Granthalay stores reading progress on your device. When the reader is resized, rotated, or
+repaginated, it restores the nearest position in the current chapter instead of relying on a stale
+page number. No reading position or book content is sent to a server.
