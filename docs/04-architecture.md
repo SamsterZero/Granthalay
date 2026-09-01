@@ -28,7 +28,9 @@ flowchart LR
 
 On import, the engine runs in metadata-only mode, then metadata and raw bytes are committed to
 separate stores. Opening and reading a book perform a full parse. The reader measures chapters in
-an off-screen element, selects a layout heuristically, and persists chapter/page/global progress.
+an off-screen element and selects a layout heuristically. It persists the chapter plus a normalized
+position within that chapter, alongside page/global progress for display and backward compatibility,
+so repagination can restore the nearest reading position instead of reusing a stale page number.
 
 The engine follows `META-INF/container.xml` to the package document, maps manifest and spine,
 loads EPUB 3 navigation or EPUB 2 NCX labels, extracts/scopes CSS, and converts archive resource

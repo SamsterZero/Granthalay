@@ -7,6 +7,12 @@
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { getBookById, updateBookProgress, type BookRecord } from '$lib/db';
 	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
+	import {
+		normalizeLocation,
+		pageToProgression,
+		progressionToPage,
+		repaginatePage
+	} from '$lib/reader/pagination';
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -21,9 +27,11 @@
 	let contentContainer = $state<HTMLElement | null>(null);
 	let containerWidth = $state(0);
 	let jumpToLastPage = $state(false);
+	let initialProgression = $state<number | null>(null);
 	let isCalculating = $state(false);
 	let chapterPageCounts = $state<number[]>([]);
 	let totalBookPages = $state(0);
+	let pageCountCalculation = 0;
 	let pagesRead = $derived.by(() => {
 		let count = 0;
 		for (let i = 0; i < currentChapter; i++) {
@@ -62,7 +70,11 @@
 				if (!chapterParam) {
 					const stored = localStorage.getItem('book-progress-default');
 					if (stored) {
-						storedRecord = JSON.parse(stored);
+						try {
+							storedRecord = JSON.parse(stored);
+						} catch {
+							// Ignore corrupt or pre-JSON progress and start from the requested location.
+						}
 					}
 				}
 			} else {
@@ -77,6 +89,9 @@
 			if (storedRecord) {
 				if (storedRecord.currentChapter !== undefined) targetChapter = storedRecord.currentChapter;
 				if (storedRecord.currentPage !== undefined) targetPage = storedRecord.currentPage;
+				if (storedRecord.semanticProgression !== undefined) {
+					initialProgression = storedRecord.semanticProgression;
+				}
 			}
 
 			const engine = new EpubEngine(arrayBuffer);
@@ -87,13 +102,14 @@
 
 			if (chapters.length > 0) {
 				bookTitle = engine.metadata.title || 'Unknown Book';
-				const initialChapter = Math.min(Math.max(0, targetChapter), chapters.length - 1);
+				const savedLocation = normalizeLocation(
+					{ chapter: targetChapter, progression: initialProgression ?? 0 },
+					chapters.length
+				);
+				const initialChapter = savedLocation.chapter;
 				currentChapter = initialChapter;
-				currentPage = targetPage;
+				currentPage = Number.isFinite(targetPage) ? Math.max(0, Math.floor(targetPage)) : 0;
 				chapterCSS = chapters[initialChapter].css;
-
-				// Calculate total pages in background
-				setTimeout(calculateChapterPageCounts, 500);
 			} else {
 				throw new Error('No readable content found in EPUB');
 			}
@@ -135,11 +151,19 @@
 		// Novel Mode: Use standard multi-column pagination
 		if (contentContainer && containerWidth > 0) {
 			const scrollWidth = contentContainer.scrollWidth;
-			totalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
+			const nextTotalPages = Math.max(1, Math.ceil(scrollWidth / containerWidth));
 			if (jumpToLastPage) {
-				currentPage = Math.max(0, totalPages - 1);
+				currentPage = nextTotalPages - 1;
 				jumpToLastPage = false;
+			} else if (initialProgression !== null) {
+				currentPage = progressionToPage(initialProgression, nextTotalPages);
+				initialProgression = null;
+			} else if (totalPages > 0) {
+				currentPage = repaginatePage(currentPage, totalPages, nextTotalPages);
+			} else {
+				currentPage = Math.min(Math.max(0, currentPage), nextTotalPages - 1);
 			}
+			totalPages = nextTotalPages;
 
 			setTimeout(() => {
 				isCalculating = false;
@@ -159,14 +183,15 @@
 		return () => clearTimeout(timer);
 	});
 
-	async function calculateChapterPageCounts() {
-		if (!containerWidth || chapters.length === 0 || chapterPageCounts.length > 0) return;
+	async function calculateChapterPageCounts(width: number, calculation: number) {
+		if (!width || chapters.length === 0) return;
+		const chaptersToMeasure = chapters;
 
 		const calcDiv = document.createElement('div');
 		// Match the reader's layout exactly for accurate calculation
 		calcDiv.className = 'prose prose-lg max-w-none';
-		calcDiv.style.width = `${containerWidth}px`;
-		calcDiv.style.columnWidth = `${containerWidth - 64}px`; // 64px = px-8 total padding
+		calcDiv.style.width = `${width}px`;
+		calcDiv.style.columnWidth = `${width - 64}px`; // 64px = px-8 total padding
 		calcDiv.style.columnGap = '64px';
 		calcDiv.style.columnFill = 'auto';
 		calcDiv.style.position = 'fixed';
@@ -179,11 +204,11 @@
 		let total = 0;
 
 		// Run in chunks to avoid blocking the main thread too much
-		for (let i = 0; i < chapters.length; i++) {
-			const content = chapters[i].content;
+		for (let i = 0; i < chaptersToMeasure.length; i++) {
+			const content = chaptersToMeasure[i].content;
 			// Speed up: Illustrated pages and covers are always exactly 1 page
 			if (
-				chapters[i].isCover ||
+				chaptersToMeasure[i].isCover ||
 				content.includes('epub-illustrated-page') ||
 				(content.length < 1000 && content.includes('<img'))
 			) {
@@ -192,9 +217,9 @@
 				continue;
 			}
 
-			calcDiv.innerHTML = chapters[i].content;
+			calcDiv.innerHTML = chaptersToMeasure[i].content;
 			// Small delay to let browser layout (though usually synchronous for scrollWidth)
-			const count = Math.max(1, Math.ceil(calcDiv.scrollWidth / containerWidth));
+			const count = Math.max(1, Math.ceil(calcDiv.scrollWidth / width));
 			counts.push(count);
 			total += count;
 
@@ -202,15 +227,20 @@
 			if (i % 5 === 0) await new Promise((r) => setTimeout(r, 0));
 		}
 
-		document.body.removeChild(calcDiv);
-		chapterPageCounts = counts;
-		totalBookPages = total;
+		calcDiv.remove();
+		if (calculation === pageCountCalculation) {
+			chapterPageCounts = counts;
+			totalBookPages = total;
+		}
 	}
 
 	$effect(() => {
-		if (containerWidth > 0 && !loading && chapters.length > 0) {
-			calculateChapterPageCounts();
-		}
+		const width = containerWidth;
+		if (width <= 0 || loading || chapters.length === 0) return;
+
+		const calculation = ++pageCountCalculation;
+		const timer = setTimeout(() => calculateChapterPageCounts(width, calculation), 250);
+		return () => clearTimeout(timer);
 	});
 
 	$effect(() => {
@@ -218,7 +248,14 @@
 			const progress = pagesRead / totalBookPages;
 			const params = new URLSearchParams(window.location.search);
 			const bookId = params.get('bookId') || 'default';
-			updateBookProgress(bookId, progress, currentChapter, currentPage, totalBookPages);
+			updateBookProgress(
+				bookId,
+				progress,
+				currentChapter,
+				currentPage,
+				totalBookPages,
+				pageToProgression(currentPage, totalPages)
+			);
 		}
 	});
 

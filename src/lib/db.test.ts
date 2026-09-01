@@ -1,7 +1,7 @@
 import { IDBFactory, IDBObjectStore } from 'fake-indexeddb';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { deleteBookById, getBookById, saveBook } from './db';
+import { deleteBookById, getBookById, saveBook, updateBookProgress } from './db';
 
 function getStoredValue(storeName: string, id: string): Promise<unknown> {
 	return new Promise((resolve, reject) => {
@@ -53,5 +53,25 @@ describe('deleteBookById', () => {
 
 		expect(await getBookById(id)).toMatchObject({ id, name: 'book.epub', title: 'Book' });
 		expect(await getStoredValue('bookContents', id)).toEqual(buffer);
+	});
+});
+
+describe('updateBookProgress', () => {
+	beforeEach(() => {
+		vi.stubGlobal('indexedDB', new IDBFactory());
+	});
+
+	it('persists the semantic chapter position with legacy page progress', async () => {
+		const id = await saveBook(new Uint8Array([1, 2, 3]).buffer, 'book.epub', 'Book', null);
+
+		await updateBookProgress(id, 0.4, 2, 4, 20, 0.5);
+
+		expect(await getBookById(id)).toMatchObject({
+			progress: 0.4,
+			currentChapter: 2,
+			currentPage: 4,
+			totalBookPages: 20,
+			semanticProgression: 0.5
+		});
 	});
 });

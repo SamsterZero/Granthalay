@@ -112,11 +112,6 @@
 
 		if (chapterIndex !== undefined) {
 			url.searchParams.set('chapter', chapterIndex.toString());
-		} else if (currentChapterIndex !== null) {
-			url.searchParams.set('chapter', currentChapterIndex.toString());
-			if (currentPageIndex !== null) {
-				url.searchParams.set('page', currentPageIndex.toString());
-			}
 		}
 
 		goto(url.pathname + url.search);

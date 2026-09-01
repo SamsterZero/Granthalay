@@ -14,6 +14,7 @@ export interface BookMetadata {
 	currentChapter?: number;
 	currentPage?: number;
 	totalBookPages?: number;
+	semanticProgression?: number;
 }
 
 export interface BookRecord extends BookMetadata {
@@ -179,12 +180,19 @@ export async function updateBookProgress(
 	progress: number,
 	currentChapter?: number,
 	currentPage?: number,
-	totalBookPages?: number
+	totalBookPages?: number,
+	semanticProgression?: number
 ): Promise<void> {
 	if (id === 'default') {
 		localStorage.setItem(
 			'book-progress-default',
-			JSON.stringify({ progress, currentChapter, currentPage, totalBookPages })
+			JSON.stringify({
+				progress,
+				currentChapter,
+				currentPage,
+				totalBookPages,
+				semanticProgression
+			})
 		);
 		return;
 	}
@@ -202,6 +210,9 @@ export async function updateBookProgress(
 				if (currentChapter !== undefined) record.currentChapter = currentChapter;
 				if (currentPage !== undefined) record.currentPage = currentPage;
 				if (totalBookPages !== undefined) record.totalBookPages = totalBookPages;
+				if (semanticProgression !== undefined) {
+					record.semanticProgression = semanticProgression;
+				}
 				const putRequest = store.put(record, id);
 				putRequest.onsuccess = () => resolve();
 				putRequest.onerror = () => reject(putRequest.error);
