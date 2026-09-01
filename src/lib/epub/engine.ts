@@ -373,6 +373,8 @@ export class EpubEngine {
 								'ol',
 								'li',
 								'blockquote',
+								'aside',
+								'sup',
 								'img',
 								'svg',
 								'image',
@@ -388,6 +390,7 @@ export class EpubEngine {
 								'caption',
 								'figure',
 								'figcaption',
+								'a',
 								'ruby',
 								'rt',
 								'rp',
@@ -397,6 +400,7 @@ export class EpubEngine {
 							],
 							allowedAttributes: {
 								'*': ['class', 'id', 'style'],
+								a: ['href', 'data-epub-href', 'aria-label', 'title'],
 								img: ['src', 'alt'],
 								svg: [
 									'viewBox',
@@ -484,6 +488,8 @@ export class EpubEngine {
 	}
 
 	private async resolveResources(doc: Document, contentFilePath: string) {
+		this.resolveInternalLinks(doc, contentFilePath);
+
 		const images = doc.querySelectorAll('img');
 		for (const img of images) {
 			const src = img.getAttribute('src');
@@ -526,6 +532,26 @@ export class EpubEngine {
 					imageElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
 				}
 			}
+		}
+	}
+
+	private resolveInternalLinks(doc: Document, contentFilePath: string) {
+		for (const anchor of doc.querySelectorAll<HTMLAnchorElement>('a[href]')) {
+			const href = anchor.getAttribute('href')?.trim();
+			if (
+				!href ||
+				href.startsWith('/') ||
+				href.startsWith('\\') ||
+				/^[a-z][a-z\d+.-]*:/i.test(href)
+			) {
+				anchor.removeAttribute('href');
+				continue;
+			}
+
+			const [path, fragment = ''] = href.split('#', 2);
+			const resolvedPath = path ? this.resolvePath(contentFilePath, path) : contentFilePath;
+			anchor.dataset.epubHref = fragment ? `${resolvedPath}#${fragment}` : resolvedPath;
+			anchor.setAttribute('href', '#');
 		}
 	}
 

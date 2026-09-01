@@ -56,11 +56,11 @@ export async function createEpub2Fixture(): Promise<ArrayBuffer> {
 	);
 	zip.file(
 		'OEBPS/text/chapter-one.xhtml',
-		'<html><head><link rel="stylesheet" href="../styles/book.css"/></head><body><h1>One</h1><p>Original fixture text.</p></body></html>'
+		'<html><head><link rel="stylesheet" href="../styles/book.css"/></head><body><h1 id="start">One</h1><p>Original fixture text. <a href="chapter-two.xhtml#note">Read note</a></p></body></html>'
 	);
 	zip.file(
 		'OEBPS/text/chapter-two.xhtml',
-		'<html><body><h1>Two</h1><p>Second chapter.</p></body></html>'
+		'<html><body><h1>Two</h1><aside id="note"><p>Second chapter note. <a href="chapter-one.xhtml#start">Return</a></p></aside><a href="https://tracker.invalid/read">Remote</a></body></html>'
 	);
 	zip.file('OEBPS/styles/book.css', 'h1 { color: navy; }');
 	zip.file('OEBPS/images/cover.png', PNG_PIXEL);

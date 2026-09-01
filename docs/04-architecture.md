@@ -40,7 +40,9 @@ Imported content cannot initiate network requests. The engine removes remote, ab
 and imported blob references from markup and styles; it strips CSS imports and image sets. Packaged
 images and CSS resources are mediated through engine-owned blob URLs, which are revoked when the
 engine is destroyed. Data URLs are limited to image elements, while scripts, frames, forms, and
-navigable links do not cross the sanitizer boundary.
+external links do not cross the sanitizer boundary. Package-internal anchors are canonicalized to
+chapter paths, retained as inert data attributes, and handled by the reader without a network
+navigation.
 
 SvelteKit uses `adapter-static` with a `404.html` fallback. The base path is `/Granthalay` only when
 `DEPLOY_TARGET=github-pages`; other builds use `/`. See [Deployment](06-deployment.md).

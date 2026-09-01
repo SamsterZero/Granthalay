@@ -24,6 +24,10 @@ Text-heavy books use horizontally paginated columns. Books detected as illustrat
 spine item per screen. Whole-book progress is calculated after layout, so its total can take a
 moment to settle or change with the viewport.
 
+Links supplied by the book can open another section, chapter, footnote, or return link inside the
+same EPUB. They work with pointer, touch, and keyboard activation. Links to websites or other
+external destinations are disabled so opening a local book cannot disclose reading activity.
+
 Position is saved automatically. Theme follows the operating-system preference on first use and
 can then be toggled. These settings belong to the current browser and deployment origin.
 
