@@ -14,11 +14,20 @@ imported book does not delete the original file on your device.
 
 Choose **Start reading**, **Resume**, or a chapter.
 
-| Input       | Previous    | Next                 |
-| ----------- | ----------- | -------------------- |
-| Keyboard    | Left Arrow  | Right Arrow or Space |
-| Pointer/tap | Left side   | Right side           |
-| Touch       | Swipe right | Swipe left           |
+| Input       | Previous              | Next                            |
+| ----------- | --------------------- | ------------------------------- |
+| Keyboard    | Left Arrow or Page Up | Right Arrow, Page Down or Space |
+| Pointer/tap | Left side             | Right side                      |
+| Touch       | Swipe right           | Swipe left                      |
+
+Home and End move to the first and last page of the current chapter. The reader footer provides
+focusable previous/next controls and a keyboard-operable chapter selector. Page and chapter changes
+are announced to assistive technology. Reader shortcuts are suspended while a link, button, form
+control, menu item, or editable field has focus.
+
+Library book tiles and rows open with Enter or Space. View controls expose their selected state, icon
+buttons have accessible names, and removing a book requires confirmation. These interactions remain
+local to the browser and do not change offline behavior.
 
 Text-heavy books use horizontally paginated columns. Books detected as illustrated use one fitted
 spine item per screen. Whole-book progress is calculated after layout, so its total can take a

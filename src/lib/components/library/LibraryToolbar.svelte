@@ -16,11 +16,13 @@
 </script>
 
 <div class="flex justify-between pb-4">
-	<ButtonGroup aria-label="Button group">
+	<ButtonGroup aria-label="Library view">
 		<Button
 			variant={viewMode === 'list' ? 'default' : 'secondary'}
 			// disabled={viewMode === 'list'}
 			onclick={() => setViewMode('list')}
+			aria-label="List view"
+			aria-pressed={viewMode === 'list'}
 		>
 			<List size={20} />
 		</Button>
@@ -28,6 +30,8 @@
 			variant={viewMode === 'comfortable' ? 'default' : 'secondary'}
 			// disabled={viewMode === 'comfortable'}
 			onclick={() => setViewMode('comfortable')}
+			aria-label="Comfortable grid view"
+			aria-pressed={viewMode === 'comfortable'}
 		>
 			<Grid2x2 size={20} />
 		</Button>
@@ -35,6 +39,8 @@
 			variant={viewMode === 'compact' ? 'default' : 'secondary'}
 			// disabled={viewMode === 'compact'}
 			onclick={() => setViewMode('compact')}
+			aria-label="Compact grid view"
+			aria-pressed={viewMode === 'compact'}
 		>
 			<Grid3x3 size={20} />
 		</Button>
@@ -45,6 +51,7 @@
 			accept=".epub"
 			class="hidden"
 			style="display: none;"
+			aria-label="Choose EPUB to import"
 			bind:this={fileInput}
 			onchange={handleFileUpload}
 		/>
@@ -54,15 +61,9 @@
 			class="cursor-pointer rounded-full"
 			onclick={() => fileInput?.click()}
 			title="Upload EPUB"
+			aria-label="Import EPUB"
 		>
 			<Plus size={20} />
 		</Button>
 	</div>
 </div>
-
-<style>
-	.selected {
-		background: var(--accent);
-		color: var(--accent-foreground);
-	}
-</style>

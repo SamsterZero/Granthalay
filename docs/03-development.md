@@ -13,6 +13,10 @@ packages without distributing third-party book content. Run the suite with `bun 
 release smoke testing lives in `src/lib/pwa/release-smoke.test.ts`.
 See the manual smoke checklist in [Compatibility](07-compatibility.md).
 
+Reader keyboard behavior is isolated in `src/lib/reader/keyboard.ts` so success paths and suppression
+inside interactive controls can be tested without browser layout. Automated checks supplement rather
+than replace the manual keyboard and screen-reader smoke checks.
+
 ## Working safely
 
 Keep sanitization in the parse path, avoid `{@html}` with unsanitized values, revoke object URLs,

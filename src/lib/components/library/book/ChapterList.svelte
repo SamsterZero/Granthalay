@@ -28,6 +28,8 @@
 							: 'hover:bg-accent'
 				}`}
 				onclick={() => startReading(globalIndex)}
+				aria-current={isActive ? 'page' : undefined}
+				aria-label={`${chapter.title}, ${isActive ? `currently at page ${(currentPageIndex ?? 0) + 1}` : isRead ? 'completed' : 'not started'}`}
 			>
 				<span
 					class={`w-8 text-sm ${isActive ? 'font-bold text-[#0D5C63]' : 'text-muted-foreground'}`}

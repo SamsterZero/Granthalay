@@ -29,6 +29,11 @@ supported browser engine before deployment:
    - Import reflowable EPUB 2 (NCX) and EPUB 3 (nav) publications.
    - Verify title, author, description, and cover image extract cleanly on the library toolbar and card.
    - Verify chapter navigation and content rendering work without console runtime errors.
+   - Navigate the library, book details, chapter list, reader controls, and removal confirmation using
+     only Tab, Shift+Tab, Enter, Space, and Escape; focus must remain visible and follow visual order.
+   - In the reader, verify Arrow keys and Page Up/Page Down change pages, Home/End reach chapter
+     boundaries, focused controls keep their native keyboard behavior, and page/chapter changes are
+     announced by a screen reader without duplicate announcements.
 2. **Offline & PWA Installation**:
    - Confirm Web App Manifest loads without warnings and Service Worker registers successfully.
    - Set Network to Offline in browser DevTools, reload the app, and verify library and open reader function completely offline.

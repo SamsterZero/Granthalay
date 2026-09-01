@@ -105,6 +105,9 @@
 	}
 
 	async function handleDeleteBook(id: string) {
+		if (!window.confirm('Remove this book from this browser? The original EPUB is not deleted.')) {
+			return;
+		}
 		await deleteBookById(id);
 		books = await getAllBooks();
 	}
