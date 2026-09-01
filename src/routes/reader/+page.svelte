@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve, assets } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
-	import { ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-svelte';
+	import { ChevronLeft, ChevronRight, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { getBookById, updateBookProgress, type BookRecord } from '$lib/db';
 	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
@@ -15,6 +15,14 @@
 	} from '$lib/reader/pagination';
 	import { resolveInternalNavigation } from '$lib/reader/navigation';
 	import { isInteractiveReaderTarget, readerKeyboardAction } from '$lib/reader/keyboard';
+	import {
+		DEFAULT_READER_PREFERENCES,
+		parseReaderPreferences,
+		readerMarginPixels,
+		READER_PREFERENCES_KEY,
+		supportsTypographyOverrides,
+		type ReaderPreferences
+	} from '$lib/reader/preferences';
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -25,6 +33,13 @@
 	let currentPage = $state(0);
 	let totalPages = $state(0);
 	let darkMode = $state(false);
+	let settingsOpen = $state(false);
+	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
+	let readerPadding = $derived(readerMarginPixels(preferences.margins));
+	let typographyOverridesAllowed = $derived(
+		chapters[currentChapter] ? supportsTypographyOverrides(chapters[currentChapter]) : false
+	);
+	let activeReaderPadding = $derived(typographyOverridesAllowed ? readerPadding : 32);
 
 	let contentContainer = $state<HTMLElement | null>(null);
 	let containerWidth = $state(0);
@@ -44,14 +59,8 @@
 	});
 
 	onMount(async () => {
-		const savedTheme = localStorage.getItem('theme');
-		if (
-			savedTheme === 'dark' ||
-			(!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-		) {
-			darkMode = true;
-			document.documentElement.classList.add('dark');
-		}
+		preferences = parseReaderPreferences(localStorage.getItem(READER_PREFERENCES_KEY));
+		applyReaderTheme(preferences.theme);
 
 		try {
 			const params = new URLSearchParams(window.location.search);
@@ -127,14 +136,26 @@
 	}
 
 	function toggleDarkMode() {
-		darkMode = !darkMode;
-		if (darkMode) {
-			document.documentElement.classList.add('dark');
-			localStorage.setItem('theme', 'dark');
-		} else {
-			document.documentElement.classList.remove('dark');
-			localStorage.setItem('theme', 'light');
-		}
+		updatePreferences({ theme: darkMode ? 'light' : 'dark' });
+	}
+
+	function applyReaderTheme(theme: ReaderPreferences['theme']) {
+		darkMode =
+			theme === 'dark' ||
+			(theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+		document.documentElement.classList.toggle('dark', darkMode);
+	}
+
+	function updatePreferences(update: Partial<ReaderPreferences>) {
+		preferences = { ...preferences, ...update };
+		localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(preferences));
+		if (update.theme) applyReaderTheme(preferences.theme);
+	}
+
+	function resetReaderPreferences() {
+		preferences = { ...DEFAULT_READER_PREFERENCES };
+		localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(preferences));
+		applyReaderTheme(preferences.theme);
 	}
 
 	const logicalChapters = $derived(chapters.filter((c) => !c.title.includes('(cont.)')));
@@ -185,7 +206,11 @@
 		return () => clearTimeout(timer);
 	});
 
-	async function calculateChapterPageCounts(width: number, calculation: number) {
+	async function calculateChapterPageCounts(
+		width: number,
+		calculation: number,
+		readerPreferences: ReaderPreferences
+	) {
 		if (!width || chapters.length === 0) return;
 		const chaptersToMeasure = chapters;
 
@@ -193,8 +218,9 @@
 		// Match the reader's layout exactly for accurate calculation
 		calcDiv.className = 'prose prose-lg max-w-none';
 		calcDiv.style.width = `${width}px`;
-		calcDiv.style.columnWidth = `${width - 64}px`; // 64px = px-8 total padding
-		calcDiv.style.columnGap = '64px';
+		const padding = readerMarginPixels(readerPreferences.margins);
+		calcDiv.style.columnWidth = `${width - padding * 2}px`;
+		calcDiv.style.columnGap = `${padding * 2}px`;
 		calcDiv.style.columnFill = 'auto';
 		calcDiv.style.position = 'fixed';
 		calcDiv.style.left = '-9999px';
@@ -219,6 +245,20 @@
 				continue;
 			}
 
+			const allowOverrides = supportsTypographyOverrides(chaptersToMeasure[i]);
+			calcDiv.style.fontSize =
+				allowOverrides && readerPreferences.fontScale !== null
+					? `${readerPreferences.fontScale}rem`
+					: '';
+			calcDiv.style.lineHeight =
+				allowOverrides && readerPreferences.lineHeight !== null
+					? String(readerPreferences.lineHeight)
+					: '';
+			calcDiv.style.textAlign =
+				allowOverrides && readerPreferences.alignment !== 'publisher'
+					? readerPreferences.alignment
+					: '';
+
 			calcDiv.innerHTML = chaptersToMeasure[i].content;
 			// Small delay to let browser layout (though usually synchronous for scrollWidth)
 			const count = Math.max(1, Math.ceil(calcDiv.scrollWidth / width));
@@ -238,10 +278,14 @@
 
 	$effect(() => {
 		const width = containerWidth;
+		const readerPreferences = preferences;
 		if (width <= 0 || loading || chapters.length === 0) return;
 
 		const calculation = ++pageCountCalculation;
-		const timer = setTimeout(() => calculateChapterPageCounts(width, calculation), 250);
+		const timer = setTimeout(
+			() => calculateChapterPageCounts(width, calculation, readerPreferences),
+			250
+		);
 		return () => clearTimeout(timer);
 	});
 
@@ -425,7 +469,123 @@
 		>
 			{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
 		</Button>
+		<Button
+			variant="ghost"
+			size="icon"
+			class="shrink-0 rounded-full"
+			onclick={() => (settingsOpen = !settingsOpen)}
+			aria-label="Reader appearance"
+			aria-expanded={settingsOpen}
+			aria-controls="reader-appearance"
+		>
+			<SlidersHorizontal class="h-5 w-5" />
+		</Button>
 	</header>
+
+	{#if settingsOpen}
+		<section
+			id="reader-appearance"
+			class="z-40 grid gap-4 border-b border-border bg-background p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5"
+			aria-labelledby="reader-appearance-heading"
+		>
+			<div class="flex items-center justify-between sm:col-span-2 lg:col-span-5">
+				<h2 id="reader-appearance-heading" class="text-sm font-semibold">Reader appearance</h2>
+				<Button variant="ghost" size="sm" onclick={resetReaderPreferences}
+					>Use publication defaults</Button
+				>
+			</div>
+
+			<label class="grid gap-1 text-sm">
+				<span>Type scale</span>
+				<select
+					class="rounded-md border border-border bg-background px-2 py-1.5"
+					value={preferences.fontScale ?? 'publisher'}
+					onchange={(event) =>
+						updatePreferences({
+							fontScale:
+								event.currentTarget.value === 'publisher' ? null : Number(event.currentTarget.value)
+						})}
+				>
+					<option value="publisher">Publication</option>
+					<option value="0.8">80%</option>
+					<option value="1">100%</option>
+					<option value="1.2">120%</option>
+					<option value="1.4">140%</option>
+					<option value="1.6">160%</option>
+				</select>
+			</label>
+
+			<label class="grid gap-1 text-sm">
+				<span>Line height</span>
+				<select
+					class="rounded-md border border-border bg-background px-2 py-1.5"
+					value={preferences.lineHeight ?? 'publisher'}
+					onchange={(event) =>
+						updatePreferences({
+							lineHeight:
+								event.currentTarget.value === 'publisher' ? null : Number(event.currentTarget.value)
+						})}
+				>
+					<option value="publisher">Publication</option>
+					<option value="1.2">Compact</option>
+					<option value="1.6">Comfortable</option>
+					<option value="1.9">Relaxed</option>
+					<option value="2.2">Extra relaxed</option>
+				</select>
+			</label>
+
+			<label class="grid gap-1 text-sm">
+				<span>Margins</span>
+				<select
+					class="rounded-md border border-border bg-background px-2 py-1.5"
+					value={preferences.margins}
+					onchange={(event) =>
+						updatePreferences({
+							margins: event.currentTarget.value as ReaderPreferences['margins']
+						})}
+				>
+					<option value="narrow">Narrow</option>
+					<option value="standard">Standard</option>
+					<option value="wide">Wide</option>
+				</select>
+			</label>
+
+			<label class="grid gap-1 text-sm">
+				<span>Alignment</span>
+				<select
+					class="rounded-md border border-border bg-background px-2 py-1.5"
+					value={preferences.alignment}
+					onchange={(event) =>
+						updatePreferences({
+							alignment: event.currentTarget.value as ReaderPreferences['alignment']
+						})}
+				>
+					<option value="publisher">Publication</option>
+					<option value="left">Left</option>
+					<option value="justify">Justified</option>
+				</select>
+			</label>
+
+			<label class="grid gap-1 text-sm">
+				<span>Theme</span>
+				<select
+					class="rounded-md border border-border bg-background px-2 py-1.5"
+					value={preferences.theme}
+					onchange={(event) =>
+						updatePreferences({ theme: event.currentTarget.value as ReaderPreferences['theme'] })}
+				>
+					<option value="system">System</option>
+					<option value="light">Light</option>
+					<option value="dark">Dark</option>
+				</select>
+			</label>
+
+			<p class="text-xs text-muted-foreground sm:col-span-2 lg:col-span-5">
+				Typography overrides apply only to reflowable text. Covers and illustrated pages retain
+				their publication layout.
+			</p>
+		</section>
+	{/if}
 
 	<main class="flex-1 overflow-hidden" aria-label="Book reader">
 		{#if loading}
@@ -486,7 +646,9 @@
 					{:else}
 						<div class="flex h-full w-full justify-center">
 							<div
-								class="h-full w-full max-w-3xl overflow-hidden border-x border-border bg-background px-8 py-8 shadow-sm"
+								class="h-full w-full max-w-3xl overflow-hidden border-x border-border bg-background py-8 shadow-sm"
+								style:padding-left={`${activeReaderPadding}px`}
+								style:padding-right={`${activeReaderPadding}px`}
 								bind:clientWidth={containerWidth}
 							>
 								<div
@@ -501,9 +663,20 @@
 										class="prose prose-lg h-full max-w-none"
 										class:is-novel-layout={isNovelMode}
 										class:is-illustrated-layout={!isNovelMode}
+										class:reader-font-override={typographyOverridesAllowed &&
+											preferences.fontScale !== null}
+										class:reader-line-height-override={typographyOverridesAllowed &&
+											preferences.lineHeight !== null}
+										class:reader-align-left={typographyOverridesAllowed &&
+											preferences.alignment === 'left'}
+										class:reader-align-justify={typographyOverridesAllowed &&
+											preferences.alignment === 'justify'}
 										style="column-width: {isNovelMode
-											? `calc(${containerWidth}px - 4rem)`
-											: 'none'}; column-gap: {isNovelMode ? '4rem' : '0'}; column-fill: auto;"
+											? `calc(${containerWidth}px - ${activeReaderPadding * 2}px)`
+											: 'none'}; column-gap: {isNovelMode
+											? `${activeReaderPadding * 2}px`
+											: '0'}; column-fill: auto; --reader-font-scale: {preferences.fontScale ??
+											1}rem; --reader-line-height: {preferences.lineHeight ?? 1.6};"
 									>
 										<!-- Content is sanitized by EpubEngine before it reaches the reader. -->
 										<!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -606,6 +779,27 @@
 	:global(.is-novel-layout .epub-content) {
 		height: 100%;
 		color: inherit;
+	}
+
+	:global(.reader-font-override .epub-content) {
+		font-size: var(--reader-font-scale) !important;
+	}
+
+	:global(.reader-font-override .epub-content :is(p, li, blockquote, td, th, figcaption)) {
+		font-size: inherit !important;
+	}
+
+	:global(.reader-line-height-override .epub-content),
+	:global(.reader-line-height-override .epub-content *) {
+		line-height: var(--reader-line-height) !important;
+	}
+
+	:global(.reader-align-left .epub-content) {
+		text-align: left !important;
+	}
+
+	:global(.reader-align-justify .epub-content) {
+		text-align: justify !important;
 	}
 
 	/* Illustrated Layout: Full-page centering for drawings */

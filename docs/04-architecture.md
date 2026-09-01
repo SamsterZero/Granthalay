@@ -31,6 +31,9 @@ separate stores. Opening and reading a book perform a full parse. The reader mea
 an off-screen element and selects a layout heuristically. It persists the chapter plus a normalized
 position within that chapter, alongside page/global progress for display and backward compatibility,
 so repagination can restore the nearest reading position instead of reusing a stale page number.
+Reader appearance preferences use a separate versioned local-storage record. Values are validated
+and bounded before use; changes trigger semantic repagination, while typography overrides are limited
+to detected reflowable text chapters.
 
 The engine follows `META-INF/container.xml` to the package document, maps manifest and spine,
 loads EPUB 3 navigation or EPUB 2 NCX labels, extracts/scopes CSS, and converts archive resource

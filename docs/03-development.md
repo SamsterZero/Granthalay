@@ -17,6 +17,10 @@ Reader keyboard behavior is isolated in `src/lib/reader/keyboard.ts` so success 
 inside interactive controls can be tested without browser layout. Automated checks supplement rather
 than replace the manual keyboard and screen-reader smoke checks.
 
+Reader appearance parsing and publisher-sensitive chapter detection live in
+`src/lib/reader/preferences.ts`. Keep stored values versioned, bounded, and backward compatible. New
+typography overrides must remain opt-in and must not be applied to fixed or illustrated content.
+
 ## Working safely
 
 Keep sanitization in the parse path, avoid `{@html}` with unsanitized values, revoke object URLs,

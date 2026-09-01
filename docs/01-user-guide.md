@@ -40,6 +40,12 @@ external destinations are disabled so opening a local book cannot disclose readi
 Position is saved automatically. Theme follows the operating-system preference on first use and
 can then be toggled. These settings belong to the current browser and deployment origin.
 
+Open **Reader appearance** in the reader header to choose publication or overridden type scale and
+line height, narrow/standard/wide margins, publication/left/justified alignment, and system/light/dark
+theme. **Use publication defaults** clears typography and alignment overrides. Typography changes
+apply only to reflowable text; covers, SVG illustrations, and image-sensitive pages retain their
+publisher layout. Appearance preferences are stored only in this browser and work offline.
+
 ## Install and protect your data
 
 On a supported browser, use Granthalay's install action or the browser's **Install app** / **Add to
