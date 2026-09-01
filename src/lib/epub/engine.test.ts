@@ -41,6 +41,9 @@ describe('EpubEngine fixtures', () => {
 		expect(chapters[0]).toMatchObject({ isCover: true, isFrontmatter: true });
 		expect(chapters[0].content).toContain('blob:fixture-');
 		expect(chapters[1].css).toContain('.epub-content h1');
+		expect(chapters[1].content).toContain('data-epub-href="OEBPS/text/chapter-two.xhtml#note"');
+		expect(chapters[2].content).toContain('data-epub-href="OEBPS/text/chapter-one.xhtml#start"');
+		expect(chapters[2].content).not.toContain('tracker.invalid');
 
 		engine.destroy();
 		expect(URL.revokeObjectURL).toHaveBeenCalled();

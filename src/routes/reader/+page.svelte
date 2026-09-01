@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve, assets } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
@@ -13,6 +13,7 @@
 		progressionToPage,
 		repaginatePage
 	} from '$lib/reader/pagination';
+	import { resolveInternalNavigation } from '$lib/reader/navigation';
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -315,11 +316,41 @@
 		const selection = window.getSelection();
 		if (selection && selection.toString().length > 0) return;
 		const target = e.target as HTMLElement;
+		const link = target.closest<HTMLAnchorElement>('a[data-epub-href]');
+		if (link) {
+			e.preventDefault();
+			void followInternalLink(link.dataset.epubHref ?? '');
+			return;
+		}
 		if (target.closest('a') || target.closest('button')) return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const x = e.clientX - rect.left;
 		if (x > rect.width * 0.7) nextPage();
 		else if (x < rect.width * 0.3) previousPage();
+	}
+
+	async function followInternalLink(href: string) {
+		const destination = resolveInternalNavigation(href, chapters);
+		if (!destination) return;
+
+		goToChapter(destination.chapter);
+
+		await tick();
+		if (!destination.fragment || !contentContainer || containerWidth <= 0) return;
+
+		const escapedFragment = CSS.escape(destination.fragment);
+		const element = contentContainer.querySelector<HTMLElement>(
+			`#${escapedFragment}, [name="${escapedFragment}"]`
+		);
+		if (!element) return;
+
+		const nextTotalPages = Math.max(1, Math.ceil(contentContainer.scrollWidth / containerWidth));
+		totalPages = nextTotalPages;
+		currentPage = Math.min(
+			nextTotalPages - 1,
+			Math.max(0, Math.floor(element.offsetLeft / containerWidth))
+		);
+		isCalculating = false;
 	}
 
 	let touchStartX = 0;

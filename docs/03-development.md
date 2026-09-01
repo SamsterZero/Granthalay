@@ -7,9 +7,10 @@ Tailwind CSS, JSZip, `sanitize-html`, and Zod.
 ## EPUB regression fixtures and smoke suite
 
 `src/lib/epub/testing/fixtures.ts` generates small, original EPUB 2 and EPUB 3 archives in memory.
-They cover container and OPF discovery, spine order, NCX and EPUB navigation, CSS, raster images,
-SVG references, and malformed packages without distributing third-party book content. Run the suite
-with `bun run test`. Automated release smoke testing lives in `src/lib/pwa/release-smoke.test.ts`.
+They cover container and OPF discovery, spine order, NCX and EPUB navigation, same-document and
+cross-chapter links, footnote return links, CSS, raster images, SVG references, and malformed
+packages without distributing third-party book content. Run the suite with `bun run test`. Automated
+release smoke testing lives in `src/lib/pwa/release-smoke.test.ts`.
 See the manual smoke checklist in [Compatibility](07-compatibility.md).
 
 ## Working safely
