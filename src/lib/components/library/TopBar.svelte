@@ -12,7 +12,7 @@
 	let { darkMode, showInstall, onTheme, onInstall }: Props = $props();
 </script>
 
-<nav class="mb-4 flex items-center justify-between text-foreground">
+<nav class="mb-4 flex items-center justify-between text-foreground" aria-label="Library actions">
 	<div class="flex h-10 w-10 items-center justify-center rounded bg-[#0D5C63]">
 		<span class="font-semibold text-white">ग्रं</span>
 	</div>
@@ -21,6 +21,7 @@
 			<Button
 				class="cursor-pointer rounded-full bg-[#0D5C63] text-white hover:bg-[#094A50]"
 				onclick={onInstall}
+				aria-label="Install Granthalay"
 			>
 				<Download size={20} />
 			</Button>
@@ -31,6 +32,7 @@
 			class="cursor-pointer rounded-full"
 			onclick={onTheme}
 			title="Toggle theme"
+			aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
 		>
 			{#if darkMode}
 				<Sun size={20} />

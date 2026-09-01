@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve, assets } from '$app/paths';
 	import { Button } from '$lib/components/ui/button';
-	import { ChevronLeft, Moon, Sun } from 'lucide-svelte';
+	import { ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { getBookById, updateBookProgress, type BookRecord } from '$lib/db';
 	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
@@ -14,6 +14,7 @@
 		repaginatePage
 	} from '$lib/reader/pagination';
 	import { resolveInternalNavigation } from '$lib/reader/navigation';
+	import { isInteractiveReaderTarget, readerKeyboardAction } from '$lib/reader/keyboard';
 
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -303,13 +304,19 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'ArrowRight' || event.key === ' ') {
-			event.preventDefault();
-			nextPage();
-		} else if (event.key === 'ArrowLeft') {
-			event.preventDefault();
-			previousPage();
-		}
+		const action = readerKeyboardAction({
+			key: event.key,
+			modified: event.altKey || event.ctrlKey || event.metaKey,
+			repeat: event.repeat,
+			interactive: isInteractiveReaderTarget(event.target)
+		});
+		if (!action) return;
+
+		event.preventDefault();
+		if (action === 'next') nextPage();
+		else if (action === 'previous') previousPage();
+		else if (action === 'first') currentPage = 0;
+		else currentPage = Math.max(0, totalPages - 1);
 	}
 
 	function handleContentClick(e: MouseEvent) {
@@ -381,7 +388,13 @@
 	<header
 		class="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4 py-2 shadow-sm"
 	>
-		<Button variant="ghost" size="icon" onclick={goBack} class="shrink-0">
+		<Button
+			variant="ghost"
+			size="icon"
+			onclick={goBack}
+			class="shrink-0"
+			aria-label="Back to library"
+		>
 			<ChevronLeft class="h-5 w-5" />
 		</Button>
 
@@ -403,14 +416,20 @@
 			{/if}
 		</div>
 
-		<Button variant="ghost" size="icon" class="shrink-0 rounded-full" onclick={toggleDarkMode}>
+		<Button
+			variant="ghost"
+			size="icon"
+			class="shrink-0 rounded-full"
+			onclick={toggleDarkMode}
+			aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
+		>
 			{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
 		</Button>
 	</header>
 
-	<main class="flex-1 overflow-hidden">
+	<main class="flex-1 overflow-hidden" aria-label="Book reader">
 		{#if loading}
-			<div class="flex h-full flex-col items-center justify-center p-8">
+			<div class="flex h-full flex-col items-center justify-center p-8" role="status">
 				<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
 				<p class="text-lg text-muted-foreground">Loading EPUB...</p>
 			</div>
@@ -428,6 +447,7 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div
 				class="relative h-full overflow-hidden bg-background"
+				aria-label="Reading area"
 				onclick={handleContentClick}
 				ontouchstart={handleTouchStart}
 				ontouchend={handleTouchEnd}
@@ -435,6 +455,8 @@
 				{#if isCalculating}
 					<div
 						class="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs transition-opacity duration-200"
+						role="status"
+						aria-live="polite"
 					>
 						<div class="flex flex-col items-center gap-3">
 							<div
@@ -496,11 +518,28 @@
 		{/if}
 	</main>
 
-	<footer class="border-t border-border bg-background px-6 py-3 text-center">
-		<div class="flex items-center justify-center gap-4">
+	<footer
+		class="border-t border-border bg-background px-4 py-3 text-center"
+		aria-label="Reader navigation"
+	>
+		<div class="flex items-center justify-center gap-3">
+			<Button
+				variant="outline"
+				size="icon"
+				onclick={previousPage}
+				disabled={currentChapter === 0 && currentPage === 0}
+				aria-label="Previous page"
+			>
+				<ChevronLeft class="h-4 w-4" />
+			</Button>
 			{#if !showSubtitle}
 				<!-- Single chapter book: show global progress -->
-				<p class="text-sm font-medium text-muted-foreground">
+				<p
+					class="text-sm font-medium text-muted-foreground"
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+				>
 					Page {pagesRead} of {totalBookPages > 0 ? totalBookPages : '...'}
 				</p>
 				{#if totalBookPages > 0}
@@ -508,15 +547,45 @@
 						<div
 							class="h-full bg-[#0D5C63] transition-all duration-300"
 							style="width: {(pagesRead / totalBookPages) * 100}%"
+							role="progressbar"
+							aria-label="Book progress"
+							aria-valuemin="0"
+							aria-valuemax="100"
+							aria-valuenow={Math.round((pagesRead / totalBookPages) * 100)}
 						></div>
 					</div>
 				{/if}
 			{:else}
 				<!-- Multi-chapter book: show per-chapter progress -->
-				<p class="text-sm font-medium text-muted-foreground">
+				<p
+					class="text-sm font-medium text-muted-foreground"
+					role="status"
+					aria-live="polite"
+					aria-atomic="true"
+				>
 					Page {currentPage + 1} / {totalPages}
 				</p>
+				<label class="sr-only" for="reader-chapter">Chapter</label>
+				<select
+					id="reader-chapter"
+					class="max-w-40 rounded-md border border-border bg-background px-2 py-1 text-sm"
+					value={currentChapter}
+					onchange={(event) => goToChapter(Number(event.currentTarget.value))}
+				>
+					{#each chapters as chapter, index (chapter.href)}
+						<option value={index}>{chapter.title}</option>
+					{/each}
+				</select>
 			{/if}
+			<Button
+				variant="outline"
+				size="icon"
+				onclick={nextPage}
+				disabled={currentChapter === chapters.length - 1 && currentPage >= totalPages - 1}
+				aria-label="Next page"
+			>
+				<ChevronRight class="h-4 w-4" />
+			</Button>
 		</div>
 	</footer>
 </div>

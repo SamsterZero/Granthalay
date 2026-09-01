@@ -29,6 +29,13 @@
 	function getInitials(text: string): string {
 		return text.charAt(0).toUpperCase();
 	}
+
+	function handleOpenKeydown(event: KeyboardEvent) {
+		if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' '))
+			return;
+		event.preventDefault();
+		onOpen(id);
+	}
 </script>
 
 <div class="group">
@@ -36,12 +43,16 @@
 		ratio={2 / 3}
 		class="relative cursor-pointer overflow-hidden rounded-xl shadow-md transition hover:-translate-y-1 hover:shadow-xl"
 		onclick={() => onOpen(id)}
+		onkeydown={handleOpenKeydown}
 		role="button"
+		tabindex={0}
+		aria-label={`Open ${title}${progress ? `, ${Math.round(progress * 100)}% complete` : ''}`}
 	>
 		<!-- Progress Badge -->
 		{#if progress && progress > 0}
 			<div
 				class="absolute top-2 left-2 z-20 rounded-full border border-white/20 bg-[#0D5C63] px-2 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-md"
+				aria-hidden="true"
 			>
 				{Math.round(progress * 100)}%
 			</div>
@@ -77,11 +88,12 @@
 			<Button
 				size="icon"
 				class="absolute top-1.5 right-1.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-none bg-red-600/90 text-white opacity-100 shadow-md transition-all duration-200 hover:scale-110 hover:bg-red-600 md:opacity-0 md:group-hover:opacity-100"
+				aria-label={`Remove ${title}`}
 				onclick={(e) => {
 					e.stopPropagation();
 					onDelete(id);
 				}}
-				title="Remove book"
+				title={`Remove ${title}`}
 			>
 				<Minus size={14} />
 			</Button>

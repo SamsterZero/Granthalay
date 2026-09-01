@@ -31,9 +31,23 @@
 
 		coverUrl = cover;
 	});
+
+	function handleOpenKeydown(event: KeyboardEvent) {
+		if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' '))
+			return;
+		event.preventDefault();
+		onOpen(id);
+	}
 </script>
 
-<Item class="bg-muted p-2" onclick={() => onOpen(id)}>
+<Item
+	class="cursor-pointer bg-muted p-2"
+	onclick={() => onOpen(id)}
+	onkeydown={handleOpenKeydown}
+	role="button"
+	tabindex={0}
+	aria-label={`Open ${title}${progress ? `, ${Math.round(progress * 100)}% complete` : ''}`}
+>
 	<!-- Cover -->
 	<div class="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded bg-muted">
 		{#if coverUrl}
@@ -63,7 +77,7 @@
 				size="icon"
 				variant="ghost"
 				class="text-destructive hover:text-destructive"
-				aria-label="Delete book"
+				aria-label={`Remove ${title}`}
 				onclick={(e) => {
 					e.stopPropagation();
 					onDelete(id);
