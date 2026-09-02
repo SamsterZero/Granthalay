@@ -2,19 +2,17 @@
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve, assets } from '$app/paths';
-	import { Button } from '$lib/components/ui/button';
-	import { ChevronLeft, ChevronRight, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
-	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
-	import { getBookById, updateBookProgress, type BookRecord } from '$lib/db';
-	import { EpubEngine, type EpubChapter } from '$lib/epub/engine';
-	import {
-		normalizeLocation,
-		pageToProgression,
-		progressionToPage,
-		repaginatePage
-	} from '$lib/reader/pagination';
+	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
+	import ReaderFooter from '$lib/components/reader/ReaderFooter.svelte';
+	import ReaderHeader from '$lib/components/reader/ReaderHeader.svelte';
+	import ReaderViewport from '$lib/components/reader/ReaderViewport.svelte';
+	import { updateBookProgress } from '$lib/db';
+	import type { EpubChapter } from '$lib/epub/engine';
+	import { pageToProgression, progressionToPage, repaginatePage } from '$lib/reader/pagination';
 	import { resolveInternalNavigation } from '$lib/reader/navigation';
 	import { isInteractiveReaderTarget, readerKeyboardAction } from '$lib/reader/keyboard';
+	import { loadReaderBook } from '$lib/reader/load';
+	import { measureChapterPageCounts } from '$lib/reader/page-count';
 	import {
 		DEFAULT_READER_PREFERENCES,
 		parseReaderPreferences,
@@ -63,67 +61,16 @@
 		applyReaderTheme(preferences.theme);
 
 		try {
-			const params = new URLSearchParams(window.location.search);
-			const bookId = params.get('bookId') || 'default';
-			const chapterParam = params.get('chapter');
-			const pageParam = params.get('page');
-			let targetChapter = chapterParam ? parseInt(chapterParam, 10) : 0;
-			let targetPage = pageParam ? parseInt(pageParam, 10) : 0;
-
-			let arrayBuffer: ArrayBuffer;
-			let storedRecord: Partial<BookRecord> | null = null;
-
-			if (bookId === 'default') {
-				const response = await fetch(`${assets}/books/pg78627-images-3.epub`);
-				if (!response.ok) throw new Error(`Failed to fetch EPUB: ${response.statusText}`);
-				arrayBuffer = await response.arrayBuffer();
-
-				if (!chapterParam) {
-					const stored = localStorage.getItem('book-progress-default');
-					if (stored) {
-						try {
-							storedRecord = JSON.parse(stored);
-						} catch {
-							// Ignore corrupt or pre-JSON progress and start from the requested location.
-						}
-					}
-				}
-			} else {
-				const book = await getBookById(bookId);
-				if (!book) throw new Error('Book not found in library');
-				arrayBuffer = book.buffer;
-				if (!chapterParam) {
-					storedRecord = book;
-				}
-			}
-
-			if (storedRecord) {
-				if (storedRecord.currentChapter !== undefined) targetChapter = storedRecord.currentChapter;
-				if (storedRecord.currentPage !== undefined) targetPage = storedRecord.currentPage;
-				if (storedRecord.semanticProgression !== undefined) {
-					initialProgression = storedRecord.semanticProgression;
-				}
-			}
-
-			const engine = new EpubEngine(arrayBuffer);
-			const spineInfos = await engine.init();
-			if (spineInfos) {
-				chapters = await engine.parseChapters(spineInfos);
-			}
-
-			if (chapters.length > 0) {
-				bookTitle = engine.metadata.title || 'Unknown Book';
-				const savedLocation = normalizeLocation(
-					{ chapter: targetChapter, progression: initialProgression ?? 0 },
-					chapters.length
-				);
-				const initialChapter = savedLocation.chapter;
-				currentChapter = initialChapter;
-				currentPage = Number.isFinite(targetPage) ? Math.max(0, Math.floor(targetPage)) : 0;
-				chapterCSS = chapters[initialChapter].css;
-			} else {
-				throw new Error('No readable content found in EPUB');
-			}
+			const loaded = await loadReaderBook(
+				new URLSearchParams(window.location.search),
+				`${assets}/books/pg78627-images-3.epub`
+			);
+			chapters = loaded.chapters;
+			bookTitle = loaded.title;
+			currentChapter = loaded.currentChapter;
+			currentPage = loaded.currentPage;
+			initialProgression = loaded.initialProgression;
+			chapterCSS = chapters[currentChapter].css;
 			loading = false;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load EPUB';
@@ -206,86 +153,19 @@
 		return () => clearTimeout(timer);
 	});
 
-	async function calculateChapterPageCounts(
-		width: number,
-		calculation: number,
-		readerPreferences: ReaderPreferences
-	) {
-		if (!width || chapters.length === 0) return;
-		const chaptersToMeasure = chapters;
-
-		const calcDiv = document.createElement('div');
-		// Match the reader's layout exactly for accurate calculation
-		calcDiv.className = 'prose prose-lg max-w-none';
-		calcDiv.style.width = `${width}px`;
-		const padding = readerMarginPixels(readerPreferences.margins);
-		calcDiv.style.columnWidth = `${width - padding * 2}px`;
-		calcDiv.style.columnGap = `${padding * 2}px`;
-		calcDiv.style.columnFill = 'auto';
-		calcDiv.style.position = 'fixed';
-		calcDiv.style.left = '-9999px';
-		calcDiv.style.visibility = 'hidden';
-		calcDiv.style.maxHeight = 'calc(100vh - 160px)'; // Approximate main area height
-		document.body.appendChild(calcDiv);
-
-		const counts: number[] = [];
-		let total = 0;
-
-		// Run in chunks to avoid blocking the main thread too much
-		for (let i = 0; i < chaptersToMeasure.length; i++) {
-			const content = chaptersToMeasure[i].content;
-			// Speed up: Illustrated pages and covers are always exactly 1 page
-			if (
-				chaptersToMeasure[i].isCover ||
-				content.includes('epub-illustrated-page') ||
-				(content.length < 1000 && content.includes('<img'))
-			) {
-				counts.push(1);
-				total += 1;
-				continue;
-			}
-
-			const allowOverrides = supportsTypographyOverrides(chaptersToMeasure[i]);
-			calcDiv.style.fontSize =
-				allowOverrides && readerPreferences.fontScale !== null
-					? `${readerPreferences.fontScale}rem`
-					: '';
-			calcDiv.style.lineHeight =
-				allowOverrides && readerPreferences.lineHeight !== null
-					? String(readerPreferences.lineHeight)
-					: '';
-			calcDiv.style.textAlign =
-				allowOverrides && readerPreferences.alignment !== 'publisher'
-					? readerPreferences.alignment
-					: '';
-
-			calcDiv.innerHTML = chaptersToMeasure[i].content;
-			// Small delay to let browser layout (though usually synchronous for scrollWidth)
-			const count = Math.max(1, Math.ceil(calcDiv.scrollWidth / width));
-			counts.push(count);
-			total += count;
-
-			// Yield every few chapters
-			if (i % 5 === 0) await new Promise((r) => setTimeout(r, 0));
-		}
-
-		calcDiv.remove();
-		if (calculation === pageCountCalculation) {
-			chapterPageCounts = counts;
-			totalBookPages = total;
-		}
-	}
-
 	$effect(() => {
 		const width = containerWidth;
 		const readerPreferences = preferences;
 		if (width <= 0 || loading || chapters.length === 0) return;
 
 		const calculation = ++pageCountCalculation;
-		const timer = setTimeout(
-			() => calculateChapterPageCounts(width, calculation, readerPreferences),
-			250
-		);
+		const timer = setTimeout(async () => {
+			const counts = await measureChapterPageCounts(chapters, width, readerPreferences);
+			if (calculation === pageCountCalculation) {
+				chapterPageCounts = counts;
+				totalBookPages = counts.reduce((total, count) => total + count, 0);
+			}
+		}, 250);
 		return () => clearTimeout(timer);
 	});
 
@@ -429,425 +309,49 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <div class="flex h-screen flex-col bg-background font-sans">
-	<header
-		class="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4 py-2 shadow-sm"
-	>
-		<Button
-			variant="ghost"
-			size="icon"
-			onclick={goBack}
-			class="shrink-0"
-			aria-label="Back to library"
-		>
-			<ChevronLeft class="h-5 w-5" />
-		</Button>
-
-		<div class="min-w-0 flex-1 px-2 text-left">
-			{#if loading}
-				<div class="space-y-1.5">
-					<div class="h-3 w-32 animate-pulse rounded bg-muted"></div>
-					<div class="h-2 w-20 animate-pulse rounded bg-muted/60"></div>
-				</div>
-			{:else}
-				<h1 class="truncate text-sm leading-tight font-bold text-foreground">{bookTitle}</h1>
-				{#if showSubtitle && chapters[currentChapter]}
-					<p
-						class="mt-0.5 truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
-					>
-						{chapters[currentChapter]?.title}
-					</p>
-				{/if}
-			{/if}
-		</div>
-
-		<Button
-			variant="ghost"
-			size="icon"
-			class="shrink-0 rounded-full"
-			onclick={toggleDarkMode}
-			aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
-		>
-			{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
-		</Button>
-		<Button
-			variant="ghost"
-			size="icon"
-			class="shrink-0 rounded-full"
-			onclick={() => (settingsOpen = !settingsOpen)}
-			aria-label="Reader appearance"
-			aria-expanded={settingsOpen}
-			aria-controls="reader-appearance"
-		>
-			<SlidersHorizontal class="h-5 w-5" />
-		</Button>
-	</header>
+	<ReaderHeader
+		{loading}
+		{bookTitle}
+		chapterTitle={showSubtitle ? (chapters[currentChapter]?.title ?? null) : null}
+		{darkMode}
+		{settingsOpen}
+		onBack={goBack}
+		onToggleTheme={toggleDarkMode}
+		onToggleSettings={() => (settingsOpen = !settingsOpen)}
+	/>
 
 	{#if settingsOpen}
-		<section
-			id="reader-appearance"
-			class="z-40 grid gap-4 border-b border-border bg-background p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5"
-			aria-labelledby="reader-appearance-heading"
-		>
-			<div class="flex items-center justify-between sm:col-span-2 lg:col-span-5">
-				<h2 id="reader-appearance-heading" class="text-sm font-semibold">Reader appearance</h2>
-				<Button variant="ghost" size="sm" onclick={resetReaderPreferences}
-					>Use publication defaults</Button
-				>
-			</div>
-
-			<label class="grid gap-1 text-sm">
-				<span>Type scale</span>
-				<select
-					class="rounded-md border border-border bg-background px-2 py-1.5"
-					value={preferences.fontScale ?? 'publisher'}
-					onchange={(event) =>
-						updatePreferences({
-							fontScale:
-								event.currentTarget.value === 'publisher' ? null : Number(event.currentTarget.value)
-						})}
-				>
-					<option value="publisher">Publication</option>
-					<option value="0.8">80%</option>
-					<option value="1">100%</option>
-					<option value="1.2">120%</option>
-					<option value="1.4">140%</option>
-					<option value="1.6">160%</option>
-				</select>
-			</label>
-
-			<label class="grid gap-1 text-sm">
-				<span>Line height</span>
-				<select
-					class="rounded-md border border-border bg-background px-2 py-1.5"
-					value={preferences.lineHeight ?? 'publisher'}
-					onchange={(event) =>
-						updatePreferences({
-							lineHeight:
-								event.currentTarget.value === 'publisher' ? null : Number(event.currentTarget.value)
-						})}
-				>
-					<option value="publisher">Publication</option>
-					<option value="1.2">Compact</option>
-					<option value="1.6">Comfortable</option>
-					<option value="1.9">Relaxed</option>
-					<option value="2.2">Extra relaxed</option>
-				</select>
-			</label>
-
-			<label class="grid gap-1 text-sm">
-				<span>Margins</span>
-				<select
-					class="rounded-md border border-border bg-background px-2 py-1.5"
-					value={preferences.margins}
-					onchange={(event) =>
-						updatePreferences({
-							margins: event.currentTarget.value as ReaderPreferences['margins']
-						})}
-				>
-					<option value="narrow">Narrow</option>
-					<option value="standard">Standard</option>
-					<option value="wide">Wide</option>
-				</select>
-			</label>
-
-			<label class="grid gap-1 text-sm">
-				<span>Alignment</span>
-				<select
-					class="rounded-md border border-border bg-background px-2 py-1.5"
-					value={preferences.alignment}
-					onchange={(event) =>
-						updatePreferences({
-							alignment: event.currentTarget.value as ReaderPreferences['alignment']
-						})}
-				>
-					<option value="publisher">Publication</option>
-					<option value="left">Left</option>
-					<option value="justify">Justified</option>
-				</select>
-			</label>
-
-			<label class="grid gap-1 text-sm">
-				<span>Theme</span>
-				<select
-					class="rounded-md border border-border bg-background px-2 py-1.5"
-					value={preferences.theme}
-					onchange={(event) =>
-						updatePreferences({ theme: event.currentTarget.value as ReaderPreferences['theme'] })}
-				>
-					<option value="system">System</option>
-					<option value="light">Light</option>
-					<option value="dark">Dark</option>
-				</select>
-			</label>
-
-			<p class="text-xs text-muted-foreground sm:col-span-2 lg:col-span-5">
-				Typography overrides apply only to reflowable text. Covers and illustrated pages retain
-				their publication layout.
-			</p>
-		</section>
+		<ReaderAppearance {preferences} onUpdate={updatePreferences} onReset={resetReaderPreferences} />
 	{/if}
 
-	<main class="flex-1 overflow-hidden" aria-label="Book reader">
-		{#if loading}
-			<div class="flex h-full flex-col items-center justify-center p-8" role="status">
-				<div class="mb-4 h-12 w-12 animate-spin rounded-full border-b-2 border-blue-600"></div>
-				<p class="text-lg text-muted-foreground">Loading EPUB...</p>
-			</div>
-		{:else if error}
-			<div class="flex h-full items-center justify-center p-8">
-				<Alert variant="destructive" class="max-w-md"
-					><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription><Button
-						onclick={goBack}
-						class="mt-4">Go Back</Button
-					></Alert
-				>
-			</div>
-		{:else}
-			<!-- svelte-ignore a11y_click_events_have_key_events -->
-			<!-- svelte-ignore a11y_no_static_element_interactions -->
-			<div
-				class="relative h-full overflow-hidden bg-background"
-				aria-label="Reading area"
-				onclick={handleContentClick}
-				ontouchstart={handleTouchStart}
-				ontouchend={handleTouchEnd}
-			>
-				{#if isCalculating}
-					<div
-						class="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs transition-opacity duration-200"
-						role="status"
-						aria-live="polite"
-					>
-						<div class="flex flex-col items-center gap-3">
-							<div
-								class="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent"
-							></div>
-							<p class="animate-pulse text-xs font-medium text-muted-foreground">
-								Arranging pages...
-							</p>
-						</div>
-					</div>
-				{/if}
+	<ReaderViewport
+		{loading}
+		{error}
+		chapter={chapters[currentChapter]}
+		{isCalculating}
+		{isNovelMode}
+		{typographyOverridesAllowed}
+		{preferences}
+		{activeReaderPadding}
+		{currentPage}
+		bind:contentContainer
+		bind:containerWidth
+		onBack={goBack}
+		onContentClick={handleContentClick}
+		onTouchStart={handleTouchStart}
+		onTouchEnd={handleTouchEnd}
+	/>
 
-				<div class="h-full w-full">
-					{#if chapters[currentChapter]?.isCover}
-						<div
-							class="flex h-full w-full items-center justify-center bg-background transition-opacity duration-300"
-							style="opacity: {isCalculating ? 0 : 1}"
-						>
-							<div
-								class="cover-container m-0 flex h-full w-full items-center justify-center overflow-hidden p-0"
-							>
-								<!-- Content is sanitized by EpubEngine before it reaches the reader. -->
-								<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-								{@html chapters[currentChapter].content}
-							</div>
-						</div>
-					{:else}
-						<div class="flex h-full w-full justify-center">
-							<div
-								class="h-full w-full max-w-3xl overflow-hidden border-x border-border bg-background py-8 shadow-sm"
-								style:padding-left={`${activeReaderPadding}px`}
-								style:padding-right={`${activeReaderPadding}px`}
-								bind:clientWidth={containerWidth}
-							>
-								<div
-									class="h-full w-full"
-									style="transform: translateX(-{currentPage *
-										containerWidth}px); transition: {isCalculating
-										? 'none'
-										: 'transform 0.3s ease-in-out'}; opacity: {isCalculating ? 0 : 1};"
-								>
-									<div
-										bind:this={contentContainer}
-										class="prose prose-lg h-full max-w-none"
-										class:is-novel-layout={isNovelMode}
-										class:is-illustrated-layout={!isNovelMode}
-										class:reader-font-override={typographyOverridesAllowed &&
-											preferences.fontScale !== null}
-										class:reader-line-height-override={typographyOverridesAllowed &&
-											preferences.lineHeight !== null}
-										class:reader-align-left={typographyOverridesAllowed &&
-											preferences.alignment === 'left'}
-										class:reader-align-justify={typographyOverridesAllowed &&
-											preferences.alignment === 'justify'}
-										style="column-width: {isNovelMode
-											? `calc(${containerWidth}px - ${activeReaderPadding * 2}px)`
-											: 'none'}; column-gap: {isNovelMode
-											? `${activeReaderPadding * 2}px`
-											: '0'}; column-fill: auto; --reader-font-scale: {preferences.fontScale ??
-											1}rem; --reader-line-height: {preferences.lineHeight ?? 1.6};"
-									>
-										<!-- Content is sanitized by EpubEngine before it reaches the reader. -->
-										<!-- eslint-disable-next-line svelte/no-at-html-tags -->
-										{@html chapters[currentChapter].content}
-									</div>
-								</div>
-							</div>
-						</div>
-					{/if}
-				</div>
-			</div>
-		{/if}
-	</main>
-
-	<footer
-		class="border-t border-border bg-background px-4 py-3 text-center"
-		aria-label="Reader navigation"
-	>
-		<div class="flex items-center justify-center gap-3">
-			<Button
-				variant="outline"
-				size="icon"
-				onclick={previousPage}
-				disabled={currentChapter === 0 && currentPage === 0}
-				aria-label="Previous page"
-			>
-				<ChevronLeft class="h-4 w-4" />
-			</Button>
-			{#if !showSubtitle}
-				<!-- Single chapter book: show global progress -->
-				<p
-					class="text-sm font-medium text-muted-foreground"
-					role="status"
-					aria-live="polite"
-					aria-atomic="true"
-				>
-					Page {pagesRead} of {totalBookPages > 0 ? totalBookPages : '...'}
-				</p>
-				{#if totalBookPages > 0}
-					<div class="hidden h-1.5 w-32 overflow-hidden rounded-full bg-muted sm:block">
-						<div
-							class="h-full bg-[#0D5C63] transition-all duration-300"
-							style="width: {(pagesRead / totalBookPages) * 100}%"
-							role="progressbar"
-							aria-label="Book progress"
-							aria-valuemin="0"
-							aria-valuemax="100"
-							aria-valuenow={Math.round((pagesRead / totalBookPages) * 100)}
-						></div>
-					</div>
-				{/if}
-			{:else}
-				<!-- Multi-chapter book: show per-chapter progress -->
-				<p
-					class="text-sm font-medium text-muted-foreground"
-					role="status"
-					aria-live="polite"
-					aria-atomic="true"
-				>
-					Page {currentPage + 1} / {totalPages}
-				</p>
-				<label class="sr-only" for="reader-chapter">Chapter</label>
-				<select
-					id="reader-chapter"
-					class="max-w-40 rounded-md border border-border bg-background px-2 py-1 text-sm"
-					value={currentChapter}
-					onchange={(event) => goToChapter(Number(event.currentTarget.value))}
-				>
-					{#each chapters as chapter, index (chapter.href)}
-						<option value={index}>{chapter.title}</option>
-					{/each}
-				</select>
-			{/if}
-			<Button
-				variant="outline"
-				size="icon"
-				onclick={nextPage}
-				disabled={currentChapter === chapters.length - 1 && currentPage >= totalPages - 1}
-				aria-label="Next page"
-			>
-				<ChevronRight class="h-4 w-4" />
-			</Button>
-		</div>
-	</footer>
+	<ReaderFooter
+		{chapters}
+		{currentChapter}
+		{currentPage}
+		{totalPages}
+		{pagesRead}
+		{totalBookPages}
+		showChapterNavigation={showSubtitle}
+		onPrevious={previousPage}
+		onNext={nextPage}
+		onChapterChange={goToChapter}
+	/>
 </div>
-
-<style>
-	:global(.prose img, .epub-content img) {
-		max-width: 100%;
-		max-height: calc(100vh - 200px) !important;
-		height: auto !important;
-		width: auto !important;
-		display: block;
-		margin: 0 auto;
-		border-radius: 0.5rem;
-		object-fit: contain;
-	}
-
-	/* Novel Layout: Standard text flow with columns */
-	:global(.is-novel-layout .epub-content) {
-		height: 100%;
-		color: inherit;
-	}
-
-	:global(.reader-font-override .epub-content) {
-		font-size: var(--reader-font-scale) !important;
-	}
-
-	:global(.reader-font-override .epub-content :is(p, li, blockquote, td, th, figcaption)) {
-		font-size: inherit !important;
-	}
-
-	:global(.reader-line-height-override .epub-content),
-	:global(.reader-line-height-override .epub-content *) {
-		line-height: var(--reader-line-height) !important;
-	}
-
-	:global(.reader-align-left .epub-content) {
-		text-align: left !important;
-	}
-
-	:global(.reader-align-justify .epub-content) {
-		text-align: justify !important;
-	}
-
-	/* Illustrated Layout: Full-page centering for drawings */
-	:global(.is-illustrated-layout .epub-content) {
-		height: 100%;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	:global(.epub-illustrated-page) {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		width: 100%;
-		max-height: calc(100vh - 200px) !important;
-		overflow: hidden;
-	}
-
-	:global(.epub-content svg),
-	:global(.epub-illustrated-page img) {
-		max-width: 100% !important;
-		max-height: 100% !important;
-		width: auto !important;
-		height: auto !important;
-	}
-
-	:global(.prose p) {
-		margin-bottom: 1rem;
-		text-align: justify;
-	}
-	:global(.prose h1, .prose h2, .prose h3) {
-		margin: 1.5rem 0 1rem 0;
-		break-after: avoid;
-	}
-	:global(.prose > *) {
-		break-inside: avoid;
-	}
-
-	:global(.prose) {
-		color: inherit;
-	}
-
-	/* Force text colors in dark mode */
-	:global(.dark .prose),
-	:global(.dark .prose *),
-	:global(.dark .epub-content *) {
-		color: hsl(var(--foreground)) !important;
-	}
-</style>
