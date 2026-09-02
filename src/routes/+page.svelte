@@ -9,6 +9,7 @@
 	import BookListItem from '$lib/components/library/BookListItem.svelte';
 	import TopBar from '$lib/components/library/TopBar.svelte';
 	import LibraryToolbar from '$lib/components/library/LibraryToolbar.svelte';
+	import { readerPreferencesKey } from '$lib/reader/preferences';
 
 	interface BeforeInstallPromptEvent extends Event {
 		prompt: () => void;
@@ -109,11 +110,16 @@
 			return;
 		}
 		await deleteBookById(id);
+		localStorage.removeItem(readerPreferencesKey(id));
 		books = await getAllBooks();
 	}
 
 	function openBook(id: string) {
 		goto(`${resolve('/book')}/${id}`);
+	}
+
+	function openSettings() {
+		goto(resolve('/settings'));
 	}
 
 	async function handleInstall() {
@@ -147,7 +153,13 @@
 </script>
 
 <div class="h-screen bg-background p-4 font-sans text-foreground transition-colors duration-300">
-	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
+	<TopBar
+		{darkMode}
+		{showInstall}
+		onTheme={toggleDarkMode}
+		onInstall={handleInstall}
+		onSettings={openSettings}
+	/>
 
 	<LibraryToolbar {viewMode} {fileInput} {setViewMode} {handleFileUpload} />
 	<main class="mx-auto">

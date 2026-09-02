@@ -63,7 +63,8 @@ function applyTypography(
 	preferences: ReaderPreferences
 ) {
 	const allowed = supportsTypographyOverrides(chapter);
-	element.style.fontSize = allowed && preferences.fontScale ? `${preferences.fontScale}rem` : '';
+	element.style.fontSize =
+		allowed && preferences.fontScale !== 1 ? `${preferences.fontScale * 100}%` : '';
 	element.style.lineHeight =
 		allowed && preferences.lineHeight ? String(preferences.lineHeight) : '';
 	element.style.textAlign =

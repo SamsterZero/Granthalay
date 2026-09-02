@@ -16,7 +16,8 @@ describe('reader preferences', () => {
 					lineHeight: 1.8,
 					margins: 'wide',
 					alignment: 'justify',
-					theme: 'dark'
+					theme: 'dark',
+					navigation: 'scroll'
 				})
 			)
 		).toEqual({
@@ -24,7 +25,8 @@ describe('reader preferences', () => {
 			lineHeight: 1.8,
 			margins: 'wide',
 			alignment: 'justify',
-			theme: 'dark'
+			theme: 'dark',
+			navigation: 'scroll'
 		});
 	});
 
@@ -39,6 +41,10 @@ describe('reader preferences', () => {
 	it('falls back safely for corrupt storage', () => {
 		expect(parseReaderPreferences('{')).toEqual(DEFAULT_READER_PREFERENCES);
 		expect(readerMarginPixels('narrow')).toBeLessThan(readerMarginPixels('wide'));
+	});
+
+	it('migrates the old publication font setting to the 100% default', () => {
+		expect(parseReaderPreferences(JSON.stringify({ fontScale: null })).fontScale).toBe(1);
 	});
 
 	it('keeps typography overrides away from publisher-sensitive pages', () => {

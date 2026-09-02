@@ -2,6 +2,7 @@
 	import { ChevronLeft, ChevronRight } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { EpubChapter } from '$lib/epub/engine';
+	import type { ReaderNavigation } from '$lib/reader/preferences';
 
 	let {
 		chapters,
@@ -11,9 +12,9 @@
 		pagesRead,
 		totalBookPages,
 		showChapterNavigation,
+		navigation,
 		onPrevious,
-		onNext,
-		onChapterChange
+		onNext
 	}: {
 		chapters: EpubChapter[];
 		currentChapter: number;
@@ -22,9 +23,9 @@
 		pagesRead: number;
 		totalBookPages: number;
 		showChapterNavigation: boolean;
+		navigation: ReaderNavigation;
 		onPrevious: () => void;
 		onNext: () => void;
-		onChapterChange: (index: number) => void;
 	} = $props();
 </script>
 
@@ -64,6 +65,15 @@
 					></div>
 				</div>
 			{/if}
+		{:else if navigation === 'scroll'}
+			<p
+				class="text-sm font-medium text-muted-foreground"
+				role="status"
+				aria-live="polite"
+				aria-atomic="true"
+			>
+				Chapter {currentChapter + 1} / {chapters.length}
+			</p>
 		{:else}
 			<p
 				class="text-sm font-medium text-muted-foreground"
@@ -73,17 +83,6 @@
 			>
 				Page {currentPage + 1} / {totalPages}
 			</p>
-			<label class="sr-only" for="reader-chapter">Chapter</label>
-			<select
-				id="reader-chapter"
-				class="max-w-40 rounded-md border border-border bg-background px-2 py-1 text-sm"
-				value={currentChapter}
-				onchange={(event) => onChapterChange(Number(event.currentTarget.value))}
-			>
-				{#each chapters as chapter, index (chapter.href)}
-					<option value={index}>{chapter.title}</option>
-				{/each}
-			</select>
 		{/if}
 		<Button
 			variant="outline"

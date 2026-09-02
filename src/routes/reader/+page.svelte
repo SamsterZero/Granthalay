@@ -15,9 +15,10 @@
 	import { measureChapterPageCounts } from '$lib/reader/page-count';
 	import {
 		DEFAULT_READER_PREFERENCES,
-		parseReaderPreferences,
+		loadBookReaderPreferences,
+		loadGlobalReaderPreferences,
 		readerMarginPixels,
-		READER_PREFERENCES_KEY,
+		readerPreferencesKey,
 		supportsTypographyOverrides,
 		type ReaderPreferences
 	} from '$lib/reader/preferences';
@@ -25,6 +26,7 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let bookTitle = $state('Unknown Book');
+	let bookId = $state('default');
 	let currentChapter = $state(0);
 	let chapters = $state<EpubChapter[]>([]);
 	let chapterCSS = $state('');
@@ -40,6 +42,7 @@
 	let activeReaderPadding = $derived(typographyOverridesAllowed ? readerPadding : 32);
 
 	let contentContainer = $state<HTMLElement | null>(null);
+	let scrollContainer = $state<HTMLElement | null>(null);
 	let containerWidth = $state(0);
 	let jumpToLastPage = $state(false);
 	let initialProgression = $state<number | null>(null);
@@ -47,7 +50,9 @@
 	let chapterPageCounts = $state<number[]>([]);
 	let totalBookPages = $state(0);
 	let pageCountCalculation = 0;
+	let scrollChapterTransition = false;
 	let pagesRead = $derived.by(() => {
+		if (preferences.navigation === 'scroll') return currentChapter + 1;
 		let count = 0;
 		for (let i = 0; i < currentChapter; i++) {
 			count += chapterPageCounts[i] || 1;
@@ -57,14 +62,13 @@
 	});
 
 	onMount(async () => {
-		preferences = parseReaderPreferences(localStorage.getItem(READER_PREFERENCES_KEY));
+		const params = new URLSearchParams(window.location.search);
+		bookId = params.get('bookId') || 'default';
+		preferences = loadBookReaderPreferences(bookId);
 		applyReaderTheme(preferences.theme);
 
 		try {
-			const loaded = await loadReaderBook(
-				new URLSearchParams(window.location.search),
-				`${assets}/books/pg78627-images-3.epub`
-			);
+			const loaded = await loadReaderBook(params, `${assets}/books/pg78627-images-3.epub`);
 			chapters = loaded.chapters;
 			bookTitle = loaded.title;
 			currentChapter = loaded.currentChapter;
@@ -95,13 +99,13 @@
 
 	function updatePreferences(update: Partial<ReaderPreferences>) {
 		preferences = { ...preferences, ...update };
-		localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(preferences));
+		localStorage.setItem(readerPreferencesKey(bookId), JSON.stringify(preferences));
 		if (update.theme) applyReaderTheme(preferences.theme);
 	}
 
 	function resetReaderPreferences() {
-		preferences = { ...DEFAULT_READER_PREFERENCES };
-		localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(preferences));
+		preferences = loadGlobalReaderPreferences();
+		localStorage.removeItem(readerPreferencesKey(bookId));
 		applyReaderTheme(preferences.theme);
 	}
 
@@ -110,6 +114,12 @@
 	let isNovelMode = $derived(logicalChapters.length > 1);
 
 	function updatePagination() {
+		if (preferences.navigation === 'scroll') {
+			totalPages = 1;
+			currentPage = 0;
+			isCalculating = false;
+			return;
+		}
 		if (!isNovelMode) {
 			// Illustrated Mode: Each spine item is exactly one page
 			totalPages = 1;
@@ -142,13 +152,15 @@
 	}
 
 	$effect(() => {
+		const navigation = preferences.navigation;
 		const timer = setTimeout(
 			updatePagination,
 			100,
 			chapters[currentChapter],
 			contentContainer,
 			containerWidth,
-			isNovelMode
+			isNovelMode,
+			navigation
 		);
 		return () => clearTimeout(timer);
 	});
@@ -156,7 +168,8 @@
 	$effect(() => {
 		const width = containerWidth;
 		const readerPreferences = preferences;
-		if (width <= 0 || loading || chapters.length === 0) return;
+		if (width <= 0 || loading || chapters.length === 0 || preferences.navigation === 'scroll')
+			return;
 
 		const calculation = ++pageCountCalculation;
 		const timer = setTimeout(async () => {
@@ -170,8 +183,9 @@
 	});
 
 	$effect(() => {
-		if (!loading && chapters.length > 0 && !isCalculating && totalBookPages > 0) {
-			const progress = pagesRead / totalBookPages;
+		const progressTotal = preferences.navigation === 'scroll' ? chapters.length : totalBookPages;
+		if (!loading && chapters.length > 0 && !isCalculating && progressTotal > 0) {
+			const progress = pagesRead / progressTotal;
 			const params = new URLSearchParams(window.location.search);
 			const bookId = params.get('bookId') || 'default';
 			updateBookProgress(
@@ -179,7 +193,7 @@
 				progress,
 				currentChapter,
 				currentPage,
-				totalBookPages,
+				progressTotal,
 				pageToProgression(currentPage, totalPages)
 			);
 		}
@@ -188,6 +202,7 @@
 	function goToChapter(index: number) {
 		if (index >= 0 && index < chapters.length) {
 			isCalculating = true;
+			if (preferences.navigation === 'scroll' && scrollContainer) scrollContainer.scrollTop = 0;
 			currentChapter = index;
 			currentPage = 0;
 		}
@@ -228,6 +243,7 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
+		if (preferences.navigation === 'scroll') return;
 		const action = readerKeyboardAction({
 			key: event.key,
 			modified: event.altKey || event.ctrlKey || event.metaKey,
@@ -254,6 +270,7 @@
 			return;
 		}
 		if (target.closest('a') || target.closest('button')) return;
+		if (preferences.navigation === 'scroll') return;
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const x = e.clientX - rect.left;
 		if (x > rect.width * 0.7) nextPage();
@@ -297,12 +314,60 @@
 		const touchEndY = e.changedTouches[0].clientY;
 		const dx = touchEndX - touchStartX;
 		const dy = touchEndY - touchStartY;
+		if (preferences.navigation === 'scroll' && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 40) {
+			if (dy > 0 && isAtScrollStart()) void navigateScrollChapter(-1);
+			else if (dy < 0 && isAtScrollEnd()) void navigateScrollChapter(1);
+			return;
+		}
 
 		// Require more horizontal than vertical movement and a minimum distance
 		if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
-			if (dx > 0) previousPage();
-			else nextPage();
+			const swipeRight = dx > 0;
+			const next = preferences.navigation === 'rtl' ? swipeRight : !swipeRight;
+			if (next) nextPage();
+			else previousPage();
 		}
+	}
+
+	function handleWheel(event: WheelEvent) {
+		if (preferences.navigation !== 'scroll' || event.deltaY === 0) return;
+		if (event.deltaY < 0 && isAtScrollStart()) {
+			event.preventDefault();
+			void navigateScrollChapter(-1);
+		} else if (event.deltaY > 0 && isAtScrollEnd()) {
+			event.preventDefault();
+			void navigateScrollChapter(1);
+		}
+	}
+
+	function isAtScrollStart() {
+		return (scrollContainer?.scrollTop ?? 0) <= 1;
+	}
+
+	function isAtScrollEnd() {
+		if (!scrollContainer) return false;
+		return (
+			scrollContainer.scrollTop + scrollContainer.clientHeight >= scrollContainer.scrollHeight - 1
+		);
+	}
+
+	async function navigateScrollChapter(direction: -1 | 1) {
+		const destination = currentChapter + direction;
+		if (
+			scrollChapterTransition ||
+			destination < 0 ||
+			destination >= chapters.length ||
+			!scrollContainer
+		)
+			return;
+
+		scrollChapterTransition = true;
+		goToChapter(destination);
+		await tick();
+		if (scrollContainer) {
+			scrollContainer.scrollTop = direction < 0 ? scrollContainer.scrollHeight : 0;
+		}
+		setTimeout(() => (scrollChapterTransition = false), 250);
 	}
 </script>
 
@@ -312,16 +377,24 @@
 	<ReaderHeader
 		{loading}
 		{bookTitle}
-		chapterTitle={showSubtitle ? (chapters[currentChapter]?.title ?? null) : null}
+		{chapters}
+		{currentChapter}
+		showChapterSelector={showSubtitle}
 		{darkMode}
 		{settingsOpen}
 		onBack={goBack}
 		onToggleTheme={toggleDarkMode}
 		onToggleSettings={() => (settingsOpen = !settingsOpen)}
+		onChapterChange={goToChapter}
 	/>
 
 	{#if settingsOpen}
-		<ReaderAppearance {preferences} onUpdate={updatePreferences} onReset={resetReaderPreferences} />
+		<ReaderAppearance
+			{preferences}
+			onUpdate={updatePreferences}
+			onReset={resetReaderPreferences}
+			resetLabel="Use global defaults"
+		/>
 	{/if}
 
 	<ReaderViewport
@@ -334,12 +407,15 @@
 		{preferences}
 		{activeReaderPadding}
 		{currentPage}
+		navigation={preferences.navigation}
 		bind:contentContainer
 		bind:containerWidth
+		bind:scrollContainer
 		onBack={goBack}
 		onContentClick={handleContentClick}
 		onTouchStart={handleTouchStart}
 		onTouchEnd={handleTouchEnd}
+		onWheel={handleWheel}
 	/>
 
 	<ReaderFooter
@@ -350,8 +426,8 @@
 		{pagesRead}
 		{totalBookPages}
 		showChapterNavigation={showSubtitle}
+		navigation={preferences.navigation}
 		onPrevious={previousPage}
 		onNext={nextPage}
-		onChapterChange={goToChapter}
 	/>
 </div>

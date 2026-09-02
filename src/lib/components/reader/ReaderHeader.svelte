@@ -1,25 +1,32 @@
 <script lang="ts">
 	import { ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import type { EpubChapter } from '$lib/epub/engine';
 
 	let {
 		loading,
 		bookTitle,
-		chapterTitle,
+		chapters,
+		currentChapter,
+		showChapterSelector,
 		darkMode,
 		settingsOpen,
 		onBack,
 		onToggleTheme,
-		onToggleSettings
+		onToggleSettings,
+		onChapterChange
 	}: {
 		loading: boolean;
 		bookTitle: string;
-		chapterTitle: string | null;
+		chapters: EpubChapter[];
+		currentChapter: number;
+		showChapterSelector: boolean;
 		darkMode: boolean;
 		settingsOpen: boolean;
 		onBack: () => void;
 		onToggleTheme: () => void;
 		onToggleSettings: () => void;
+		onChapterChange: (index: number) => void;
 	} = $props();
 </script>
 
@@ -44,12 +51,18 @@
 			</div>
 		{:else}
 			<h1 class="truncate text-sm leading-tight font-bold text-foreground">{bookTitle}</h1>
-			{#if chapterTitle}
-				<p
-					class="mt-0.5 truncate text-[10px] font-medium tracking-widest text-muted-foreground uppercase"
-				>
-					{chapterTitle}
-				</p>
+			{#if showChapterSelector}
+				<label class="mt-0.5 block" aria-label="Chapter">
+					<select
+						class="block max-w-full truncate border-0 bg-transparent p-0 text-[10px] font-medium tracking-widest text-muted-foreground uppercase focus-visible:outline-2 focus-visible:outline-offset-2"
+						value={currentChapter}
+						onchange={(event) => onChapterChange(Number(event.currentTarget.value))}
+					>
+						{#each chapters as chapter, index (chapter.href)}
+							<option value={index}>{chapter.title}</option>
+						{/each}
+					</select>
+				</label>
 			{/if}
 		{/if}
 	</div>
