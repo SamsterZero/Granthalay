@@ -40,6 +40,12 @@ external destinations are disabled so opening a local book cannot disclose readi
 Position is saved automatically. Theme follows the operating-system preference on first use and
 can then be toggled. These settings belong to the current browser and deployment origin.
 
+Open **Reading settings** from the library top bar to set global defaults for font size, line height,
+margins, alignment, theme, and RTL, LTR, or scrolling navigation. The same controls in a reader save
+preferences only for that book; **Use global defaults** removes its custom preferences. Typography
+changes apply only to reflowable text; covers, SVG illustrations, and image-sensitive pages retain
+their publisher layout. Preferences are stored only in this browser and work offline.
+
 ## Install and protect your data
 
 On a supported browser, use Granthalay's install action or the browser's **Install app** / **Add to

@@ -34,6 +34,9 @@ supported browser engine before deployment:
    - In the reader, verify Arrow keys and Page Up/Page Down change pages, Home/End reach chapter
      boundaries, focused controls keep their native keyboard behavior, and page/chapter changes are
      announced by a screen reader without duplicate announcements.
+   - Change each reader appearance option, reload, and verify it persists locally. Confirm text
+     repaginates near the same position and covers, SVG illustrations, and image-only pages are not
+     restyled by typography overrides in both light and dark themes.
 2. **Offline & PWA Installation**:
    - Confirm Web App Manifest loads without warnings and Service Worker registers successfully.
    - Set Network to Offline in browser DevTools, reload the app, and verify library and open reader function completely offline.
