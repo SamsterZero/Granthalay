@@ -46,7 +46,7 @@ Position is saved automatically. Theme follows the operating-system preference o
 can then be toggled. These settings belong to the current browser and deployment origin.
 
 Use the bookmark button in the reader header to save or remove a bookmark at the current location.
-Open **Reader settings** and choose the **Annotations** tab to revisit or remove saved annotations.
+Open the **Reader settings** pop-up and choose the **Annotations** tab to revisit or remove saved annotations.
 To highlight, select text in the reading area and choose the contextual **Highlight** action that
 appears beside the selection. Reader status messages announce these changes without moving keyboard
 focus.

@@ -531,13 +531,23 @@
 		showChapterSelector={showSubtitle}
 		{darkMode}
 		bookmarked={Boolean(currentBookmark)}
-		{settingsOpen}
+		bind:settingsOpen
 		onBack={goBack}
 		onToggleTheme={toggleDarkMode}
 		onToggleBookmark={() => void toggleBookmark()}
-		onToggleSettings={() => (settingsOpen = !settingsOpen)}
 		onChapterChange={goToChapter}
-	/>
+	>
+		{#snippet settings()}
+			<ReaderSettings
+				{preferences}
+				{annotations}
+				onUpdatePreferences={updatePreferences}
+				onResetPreferences={resetReaderPreferences}
+				onNavigateAnnotation={(annotation) => void navigateToAnnotation(annotation)}
+				onRemoveAnnotation={(annotation) => void removeAnnotation(annotation)}
+			/>
+		{/snippet}
+	</ReaderHeader>
 	<p class="sr-only" aria-live="polite">{annotationStatus}</p>
 
 	{#if pendingHighlight && highlightActionPosition}
@@ -558,17 +568,6 @@
 			<Highlighter class="h-4 w-4" aria-hidden="true" />
 			Highlight
 		</button>
-	{/if}
-
-	{#if settingsOpen}
-		<ReaderSettings
-			{preferences}
-			{annotations}
-			onUpdatePreferences={updatePreferences}
-			onResetPreferences={resetReaderPreferences}
-			onNavigateAnnotation={(annotation) => void navigateToAnnotation(annotation)}
-			onRemoveAnnotation={(annotation) => void removeAnnotation(annotation)}
-		/>
 	{/if}
 
 	<ReaderViewport

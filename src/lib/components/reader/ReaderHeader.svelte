@@ -1,6 +1,8 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import { Bookmark, ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as Popover from '$lib/components/ui/popover';
 	import type { EpubChapter } from '$lib/epub/engine';
 
 	let {
@@ -11,11 +13,11 @@
 		showChapterSelector,
 		darkMode,
 		bookmarked,
-		settingsOpen,
+		settingsOpen = $bindable(false),
+		settings,
 		onBack,
 		onToggleTheme,
 		onToggleBookmark,
-		onToggleSettings,
 		onChapterChange
 	}: {
 		loading: boolean;
@@ -25,11 +27,11 @@
 		showChapterSelector: boolean;
 		darkMode: boolean;
 		bookmarked: boolean;
-		settingsOpen: boolean;
+		settingsOpen?: boolean;
+		settings: Snippet;
 		onBack: () => void;
 		onToggleTheme: () => void;
 		onToggleBookmark: () => void;
-		onToggleSettings: () => void;
 		onChapterChange: (index: number) => void;
 	} = $props();
 </script>
@@ -94,16 +96,20 @@
 	>
 		{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
 	</Button>
-	<Button
-		variant="ghost"
-		size="icon"
-		class="shrink-0 rounded-full"
-		onclick={onToggleSettings}
-		aria-label="Reader settings"
-		title="Reader settings"
-		aria-expanded={settingsOpen}
-		aria-controls="reader-settings"
-	>
-		<SlidersHorizontal class="h-5 w-5" />
-	</Button>
+	<Popover.Root bind:open={settingsOpen}>
+		<Popover.Trigger
+			class="inline-flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+			aria-label="Reader settings"
+			title="Reader settings"
+		>
+			<SlidersHorizontal class="h-5 w-5" />
+		</Popover.Trigger>
+		<Popover.Content
+			align="end"
+			sideOffset={8}
+			class="max-h-[calc(100vh-5rem)] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto p-0"
+		>
+			{@render settings()}
+		</Popover.Content>
+	</Popover.Root>
 </header>

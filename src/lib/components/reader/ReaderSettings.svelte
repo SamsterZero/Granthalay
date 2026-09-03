@@ -23,7 +23,7 @@
 	} = $props();
 </script>
 
-<section id="reader-settings" class="z-40 border-b border-border bg-background shadow-sm">
+<section id="reader-settings" class="bg-background">
 	<Tabs.Root value="appearance" class="gap-0">
 		<div class="border-b border-border px-4 pt-3">
 			<Tabs.List aria-label="Reader settings sections">
