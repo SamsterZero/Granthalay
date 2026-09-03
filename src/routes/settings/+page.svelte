@@ -79,16 +79,16 @@
 
 <svelte:head><title>Settings · Granthalay</title></svelte:head>
 
-<div class="min-h-screen bg-background px-4 pt-5 pb-24 font-sans text-foreground sm:px-6 lg:px-8">
-	<header class="mx-auto max-w-7xl">
-		<div class="flex items-start gap-3">
+<div class="min-h-screen bg-background pb-24 font-sans text-foreground">
+	<header class="sticky top-0 z-30 h-14 bg-background/95 shadow-sm backdrop-blur">
+		<div class="mx-auto flex h-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
 			<Sheet.Root bind:open={menuOpen}>
 				<Sheet.Trigger>
 					{#snippet child({ props })}
 						<Button
 							variant="ghost"
 							size="icon"
-							class="mt-1 shrink-0 lg:hidden"
+							class="shrink-0 lg:hidden"
 							aria-label="Open settings menu"
 							{...props}
 						>
@@ -126,13 +126,13 @@
 				</Sheet.Content>
 			</Sheet.Root>
 
-			<div>
-				<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
-			</div>
+			<h1 class="text-lg font-semibold tracking-tight">Settings</h1>
 		</div>
 	</header>
 
-	<main class="mx-auto mt-6 grid max-w-7xl gap-8 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start">
+	<main
+		class="mx-auto grid max-w-7xl gap-8 px-4 pt-6 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
+	>
 		<aside class="sticky top-6 hidden lg:block">
 			<nav class="grid gap-1" aria-label="Settings sections">
 				{#each settingsSections as section (section.id)}
