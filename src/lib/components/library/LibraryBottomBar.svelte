@@ -8,7 +8,7 @@
 		onOpenAnnotations,
 		onOpenSettings
 	}: {
-		active: 'library' | 'annotations';
+		active: 'library' | 'annotations' | 'settings';
 		annotationCount?: number;
 		onOpenLibrary: () => void;
 		onOpenAnnotations: () => void;
@@ -58,8 +58,11 @@
 
 		<button
 			type="button"
-			class="flex min-w-24 flex-col items-center gap-1 rounded-md px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
+			class="flex min-w-24 flex-col items-center gap-1 rounded-md px-4 py-2 text-xs font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2"
+			class:text-primary={active === 'settings'}
+			class:text-muted-foreground={active !== 'settings'}
 			onclick={onOpenSettings}
+			aria-current={active === 'settings' ? 'page' : undefined}
 		>
 			<Settings class="h-5 w-5" aria-hidden="true" />
 			Settings

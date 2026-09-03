@@ -21,7 +21,7 @@ flowchart LR
 
 - `src/routes/+page.svelte`: library loading, import, view, theme, and install prompt.
 - `src/routes/annotations/+page.svelte`: responsive library-wide bookmark and highlight management.
-- `src/routes/settings/+page.svelte`: global reading defaults.
+- `src/routes/settings/+page.svelte`: responsive global reading defaults and local-privacy guidance.
 - `src/routes/book/[bookId]/+page.svelte`: metadata, chapters, and start/resume links.
 - `src/routes/reader/+page.svelte`: measurement, pagination, navigation, and progress.
 - `src/lib/epub/engine.ts`: ZIP, container/OPF/TOC/CSS, resources, sanitization, and chapters.

@@ -64,6 +64,10 @@ preferences only for that book; **Use global defaults** removes its custom prefe
 changes apply only to reflowable text; covers, SVG illustrations, and image-sensitive pages retain
 their publisher layout. Preferences are stored only in this browser and work offline.
 
+The Settings destination is responsive: controls stack on phones, spread into columns on tablets,
+and use a settings workspace with supporting privacy and behavior guidance on desktop. The shared
+bottom app bar remains available for returning to Library or Annotations.
+
 ## Install and protect your data
 
 On a supported browser, use Granthalay's install action or the browser's **Install app** / **Add to
