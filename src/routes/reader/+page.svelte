@@ -163,10 +163,10 @@
 		};
 	}
 
-	async function createHighlight() {
-		if (!pendingHighlight) return;
+	async function createHighlight(highlightDraft: NewBookAnnotation | null) {
+		if (!highlightDraft) return;
 		try {
-			const highlight = await saveAnnotation(pendingHighlight);
+			const highlight = await saveAnnotation(highlightDraft);
 			annotations = [...annotations, highlight];
 			pendingHighlight = null;
 			highlightActionPosition = null;
@@ -549,8 +549,13 @@
 			class="fixed z-[60] flex -translate-x-1/2 -translate-y-full items-center gap-1.5 rounded-full bg-foreground px-3 py-2 text-xs font-semibold text-background shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2"
 			style:left={`${highlightActionPosition.left}px`}
 			style:top={`${highlightActionPosition.top}px`}
-			onpointerdown={(event) => event.preventDefault()}
-			onclick={() => void createHighlight()}
+			onpointerdown={(event) => {
+				event.preventDefault();
+				void createHighlight(pendingHighlight);
+			}}
+			onclick={(event) => {
+				if (event.detail === 0) void createHighlight(pendingHighlight);
+			}}
 			aria-label="Save selected text as a highlight"
 		>
 			<Highlighter class="h-4 w-4" aria-hidden="true" />
