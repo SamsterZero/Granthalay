@@ -20,6 +20,7 @@ flowchart LR
 ## Main areas
 
 - `src/routes/+page.svelte`: library loading, import, view, theme, and install prompt.
+- `src/routes/annotations/+page.svelte`: responsive library-wide bookmark and highlight management.
 - `src/routes/settings/+page.svelte`: global reading defaults.
 - `src/routes/book/[bookId]/+page.svelte`: metadata, chapters, and start/resume links.
 - `src/routes/reader/+page.svelte`: measurement, pagination, navigation, and progress.

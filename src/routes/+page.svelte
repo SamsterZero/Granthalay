@@ -128,12 +128,8 @@
 		goto(`${resolve('/book')}/${id}`);
 	}
 
-	function openAnnotation(annotation: BookAnnotation) {
-		const params = new URLSearchParams({
-			bookId: annotation.bookId,
-			annotation: annotation.id
-		});
-		goto(`${resolve('/reader')}?${params.toString()}`);
+	function openAnnotations() {
+		goto(resolve('/annotations'));
 	}
 
 	function openSettings() {
@@ -260,10 +256,10 @@
 	</main>
 
 	<LibraryBottomBar
-		{annotations}
-		{books}
-		defaultBookTitle={defaultBook?.title}
-		onOpenAnnotation={openAnnotation}
+		active="library"
+		annotationCount={annotations.length}
+		onOpenLibrary={() => {}}
+		onOpenAnnotations={openAnnotations}
 		onOpenSettings={openSettings}
 	/>
 </div>

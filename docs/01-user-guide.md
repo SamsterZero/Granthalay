@@ -10,10 +10,10 @@ metadata locally and stores the book in this browser; it is not uploaded. The li
 list, compact, and comfortable views. Open a book to view its details and chapters. Removing an
 imported book does not delete the original file on your device.
 
-The library bottom app bar includes **Library**, **Annotations**, and **Settings**. Annotations lists
-bookmarks and highlights from all locally stored books; each item identifies its book and opens the
-saved passage directly in the reader. The count badge reflects the annotations currently stored in
-this browser.
+The bottom app bar includes **Library**, **Annotations**, and **Settings**. Annotations opens a
+dedicated page of bookmarks and highlights from all locally stored books. Filter the responsive list
+by bookmarks or highlights, open a saved passage directly in the reader, or remove an item. The count
+badge reflects the annotations currently stored in this browser.
 
 ## Read and navigate
 
