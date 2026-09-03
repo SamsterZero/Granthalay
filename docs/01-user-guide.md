@@ -10,9 +10,10 @@ metadata locally and stores the book in this browser; it is not uploaded. The li
 list, compact, and comfortable views. Open a book to view its details and chapters. Removing an
 imported book does not delete the original file on your device.
 
-The library bottom app bar includes **Annotations**, which lists bookmarks and highlights from all
-locally stored books. Each item identifies its book and opens the saved passage directly in the
-reader. The count badge reflects the annotations currently stored in this browser.
+The library bottom app bar includes **Library**, **Annotations**, and **Settings**. Annotations lists
+bookmarks and highlights from all locally stored books; each item identifies its book and opens the
+saved passage directly in the reader. The count badge reflects the annotations currently stored in
+this browser.
 
 ## Read and navigate
 
@@ -57,7 +58,7 @@ the quote can no longer be found, the saved record remains available for removal
 silently moved to unrelated text. All annotation data stays in this browser and is removed when its
 imported book is deleted.
 
-Open **Reading settings** from the library top bar to set global defaults for font size, line height,
+Open **Settings** from the library bottom app bar to set global defaults for font size, line height,
 margins, alignment, theme, and RTL, LTR, or scrolling navigation. The same controls in a reader save
 preferences only for that book; **Use global defaults** removes its custom preferences. Typography
 changes apply only to reflowable text; covers, SVG illustrations, and image-sensitive pages retain

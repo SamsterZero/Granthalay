@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Download, Moon, Settings, Sun } from 'lucide-svelte';
+	import { Download, Moon, Sun } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	interface Props {
@@ -7,10 +7,9 @@
 		showInstall: boolean;
 		onTheme: () => void;
 		onInstall: () => void;
-		onSettings: () => void;
 	}
 
-	let { darkMode, showInstall, onTheme, onInstall, onSettings }: Props = $props();
+	let { darkMode, showInstall, onTheme, onInstall }: Props = $props();
 </script>
 
 <nav class="mb-4 flex items-center justify-between text-foreground" aria-label="Library actions">
@@ -27,16 +26,6 @@
 				<Download size={20} />
 			</Button>
 		{/if}
-		<Button
-			variant="outline"
-			size="icon"
-			class="cursor-pointer rounded-full"
-			onclick={onSettings}
-			title="Reading settings"
-			aria-label="Open reading settings"
-		>
-			<Settings size={20} />
-		</Button>
 		<Button
 			variant="outline"
 			size="icon"

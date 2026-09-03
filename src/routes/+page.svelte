@@ -173,13 +173,7 @@
 <div
 	class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300"
 >
-	<TopBar
-		{darkMode}
-		{showInstall}
-		onTheme={toggleDarkMode}
-		onInstall={handleInstall}
-		onSettings={openSettings}
-	/>
+	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
 	<LibraryToolbar {viewMode} {fileInput} {setViewMode} {handleFileUpload} />
 	<main class="mx-auto">
@@ -270,6 +264,7 @@
 		{books}
 		defaultBookTitle={defaultBook?.title}
 		onOpenAnnotation={openAnnotation}
+		onOpenSettings={openSettings}
 	/>
 </div>
 

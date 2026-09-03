@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BookOpen, Bookmark, Highlighter, Library } from 'lucide-svelte';
+	import { BookOpen, Bookmark, Highlighter, Library, Settings } from 'lucide-svelte';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import type { BookMetadata } from '$lib/db';
 	import type { BookAnnotation } from '$lib/reader/annotations';
@@ -8,12 +8,14 @@
 		annotations,
 		books,
 		defaultBookTitle,
-		onOpenAnnotation
+		onOpenAnnotation,
+		onOpenSettings
 	}: {
 		annotations: BookAnnotation[];
 		books: BookMetadata[];
 		defaultBookTitle?: string;
 		onOpenAnnotation: (annotation: BookAnnotation) => void;
+		onOpenSettings: () => void;
 	} = $props();
 
 	let annotationsOpen = $state(false);
@@ -106,5 +108,14 @@
 				{/if}
 			</Sheet.Content>
 		</Sheet.Root>
+
+		<button
+			type="button"
+			class="flex min-w-24 flex-col items-center gap-1 rounded-md px-4 py-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
+			onclick={onOpenSettings}
+		>
+			<Settings class="h-5 w-5" aria-hidden="true" />
+			Settings
+		</button>
 	</div>
 </nav>
