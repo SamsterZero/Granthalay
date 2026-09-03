@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { BookOpen, Database, Menu, ShieldCheck } from 'lucide-svelte';
+	import { BookOpen, Database, ExternalLink, Menu, ShieldCheck } from 'lucide-svelte';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -18,6 +18,16 @@
 	const settingsSections = [
 		{ id: 'reading', label: 'Reading' },
 		{ id: 'storage-privacy', label: 'Storage & privacy' }
+	] as const;
+	const policyLinks = [
+		{
+			label: 'Privacy policy',
+			href: 'https://github.com/SamsterZero/Granthalay/wiki/Data-and-Privacy'
+		},
+		{
+			label: 'Terms of usage',
+			href: 'https://github.com/SamsterZero/Granthalay/wiki/Terms-of-Use'
+		}
 	] as const;
 
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
@@ -101,14 +111,23 @@
 								{section.label}
 							</button>
 						{/each}
+						{#each policyLinks as link (link.href)}
+							<a
+								href={link.href}
+								target="_blank"
+								rel="noreferrer"
+								class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
+							>
+								{link.label}
+								<ExternalLink class="h-4 w-4" aria-hidden="true" />
+							</a>
+						{/each}
 					</nav>
 				</Sheet.Content>
 			</Sheet.Root>
 
 			<div>
-				<p class="text-sm font-medium text-primary">Granthalay preferences</p>
-				<h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
-				<p class="mt-1 text-sm text-muted-foreground">Defaults and on-device preferences.</p>
+				<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
 			</div>
 		</div>
 	</header>
@@ -124,6 +143,17 @@
 					>
 						{section.label}
 					</button>
+				{/each}
+				{#each policyLinks as link (link.href)}
+					<a
+						href={link.href}
+						target="_blank"
+						rel="noreferrer"
+						class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
+					>
+						{link.label}
+						<ExternalLink class="h-4 w-4" aria-hidden="true" />
+					</a>
 				{/each}
 			</nav>
 		</aside>
