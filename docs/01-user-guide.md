@@ -74,8 +74,11 @@ bar remains available for returning to Library or Annotations.
 On a supported browser, use Granthalay's install action or the browser's **Install app** / **Add to
 Home Screen** menu. Availability depends on HTTPS, browser support, and the deployment path.
 
-Keep the original EPUBs. Clearing site data removes imported books and progress, and Granthalay
-does not currently export or synchronize a library. See [Data and privacy](05-data-and-privacy.md).
+Keep the original EPUBs. You can also open **Settings**, find **Backup & restore**, and choose
+**Export backup** to save imported books and reading data in a self-contained, versioned archive.
+The export is created and downloaded locally, works offline, and reports its resulting size.
+Granthalay does not synchronize a library, and clearing site data still removes the browser copy.
+See [Data and privacy](05-data-and-privacy.md).
 
 ## Stable reading position
 
