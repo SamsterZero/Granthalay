@@ -106,8 +106,8 @@
 		</Popover.Trigger>
 		<Popover.Content
 			align="end"
-			sideOffset={8}
-			class="max-h-[calc(100vh-5rem)] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto p-0"
+			sideOffset={20}
+			class="max-h-[calc(100vh-6rem)] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border p-0 shadow-xl"
 		>
 			{@render settings()}
 		</Popover.Content>
