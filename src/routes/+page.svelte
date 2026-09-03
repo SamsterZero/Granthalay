@@ -3,12 +3,20 @@
 	import { goto } from '$app/navigation';
 	import { assets, resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { saveBook, getAllBooks, deleteBookById, type BookMetadata } from '$lib/db';
+	import {
+		saveBook,
+		getAllBooks,
+		getAllAnnotations,
+		deleteBookById,
+		type BookMetadata
+	} from '$lib/db';
+	import type { BookAnnotation } from '$lib/reader/annotations';
 	import { EpubEngine } from '$lib/epub/engine';
 	import BookCard from '$lib/components/library/BookCard.svelte';
 	import BookListItem from '$lib/components/library/BookListItem.svelte';
 	import TopBar from '$lib/components/library/TopBar.svelte';
 	import LibraryToolbar from '$lib/components/library/LibraryToolbar.svelte';
+	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
 	import { readerPreferencesKey } from '$lib/reader/preferences';
 
 	interface BeforeInstallPromptEvent extends Event {
@@ -20,6 +28,7 @@
 
 	let fileInput = $state<HTMLInputElement | undefined>();
 	let books = $state<BookMetadata[]>([]);
+	let annotations = $state<BookAnnotation[]>([]);
 	let defaultBook = $state<{
 		title: string;
 		cover: string | Blob | null;
@@ -51,7 +60,7 @@
 			document.documentElement.classList.add('dark');
 		}
 
-		books = await getAllBooks();
+		[books, annotations] = await Promise.all([getAllBooks(), getAllAnnotations()]);
 
 		try {
 			const response = await fetch(`${assets}/books/pg78627-images-3.epub`);
@@ -102,6 +111,7 @@
 		const meta = engine.metadata;
 		await saveBook(buffer, file.name, meta.title, meta.cover);
 		books = await getAllBooks();
+		annotations = await getAllAnnotations();
 		if (fileInput) fileInput.value = '';
 	}
 
@@ -111,11 +121,19 @@
 		}
 		await deleteBookById(id);
 		localStorage.removeItem(readerPreferencesKey(id));
-		books = await getAllBooks();
+		[books, annotations] = await Promise.all([getAllBooks(), getAllAnnotations()]);
 	}
 
 	function openBook(id: string) {
 		goto(`${resolve('/book')}/${id}`);
+	}
+
+	function openAnnotation(annotation: BookAnnotation) {
+		const params = new URLSearchParams({
+			bookId: annotation.bookId,
+			annotation: annotation.id
+		});
+		goto(`${resolve('/reader')}?${params.toString()}`);
 	}
 
 	function openSettings() {
@@ -152,7 +170,9 @@
 	}
 </script>
 
-<div class="h-screen bg-background p-4 font-sans text-foreground transition-colors duration-300">
+<div
+	class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300"
+>
 	<TopBar
 		{darkMode}
 		{showInstall}
@@ -244,6 +264,13 @@
 			{/if}
 		{/if}
 	</main>
+
+	<LibraryBottomBar
+		{annotations}
+		{books}
+		defaultBookTitle={defaultBook?.title}
+		onOpenAnnotation={openAnnotation}
+	/>
 </div>
 
 <style>

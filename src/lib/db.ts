@@ -230,6 +230,21 @@ export async function getBookAnnotations(bookId: string): Promise<BookAnnotation
 	});
 }
 
+export async function getAllAnnotations(): Promise<BookAnnotation[]> {
+	const db = await getDB();
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction(ANNOTATION_STORE_NAME, 'readonly');
+		const request = transaction.objectStore(ANNOTATION_STORE_NAME).getAll();
+		request.onsuccess = () =>
+			resolve(
+				(request.result as unknown[])
+					.filter(isBookAnnotation)
+					.sort((a, b) => b.updatedAt - a.updatedAt)
+			);
+		request.onerror = () => reject(request.error);
+	});
+}
+
 export async function deleteAnnotation(id: string): Promise<void> {
 	const db = await getDB();
 	return new Promise((resolve, reject) => {

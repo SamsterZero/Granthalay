@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	deleteAnnotation,
 	deleteBookById,
+	getAllAnnotations,
 	getBookAnnotations,
 	getBookById,
 	saveAnnotation,
@@ -91,6 +92,7 @@ describe('annotations', () => {
 		const reloaded = await getBookAnnotations('book-1');
 		expect(reloaded).toEqual([bookmark, highlight]);
 		expect(reloaded[0].location).not.toHaveProperty('page');
+		expect(await getAllAnnotations()).toEqual(expect.arrayContaining([bookmark, highlight]));
 	});
 
 	it('rejects malformed highlights and supports deletion', async () => {

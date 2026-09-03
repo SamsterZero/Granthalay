@@ -102,6 +102,14 @@
 				annotationStatus = 'Saved annotations are unavailable, but reading can continue.';
 			}
 			loading = false;
+			const requestedAnnotation = params.get('annotation');
+			if (requestedAnnotation) {
+				const annotation = annotations.find((item) => item.id === requestedAnnotation);
+				if (annotation) {
+					await tick();
+					await navigateToAnnotation(annotation);
+				}
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load EPUB';
 			loading = false;
