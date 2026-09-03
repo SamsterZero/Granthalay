@@ -8,19 +8,24 @@
 		onUpdate,
 		onReset,
 		heading = 'Reader settings',
-		resetLabel = 'Use defaults'
+		resetLabel = 'Use defaults',
+		embedded = false
 	}: {
 		preferences: ReaderPreferences;
 		onUpdate: (update: Partial<ReaderPreferences>) => void;
 		onReset: () => void;
 		heading?: string;
 		resetLabel?: string;
+		embedded?: boolean;
 	} = $props();
 </script>
 
 <section
 	id="reader-appearance"
-	class="z-40 grid gap-4 border-b border-border bg-background p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-5"
+	class="z-40 grid gap-4 bg-background p-4 sm:grid-cols-2 lg:grid-cols-5"
+	class:border-b={!embedded}
+	class:border-border={!embedded}
+	class:shadow-sm={!embedded}
 	aria-labelledby="reader-appearance-heading"
 >
 	<div class="flex items-center justify-between sm:col-span-2 lg:col-span-5">

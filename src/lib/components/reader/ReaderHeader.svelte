@@ -1,6 +1,8 @@
 <script lang="ts">
-	import { ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
+	import type { Snippet } from 'svelte';
+	import { Bookmark, ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
+	import * as Popover from '$lib/components/ui/popover';
 	import type { EpubChapter } from '$lib/epub/engine';
 
 	let {
@@ -10,10 +12,12 @@
 		currentChapter,
 		showChapterSelector,
 		darkMode,
-		settingsOpen,
+		bookmarked,
+		settingsOpen = $bindable(false),
+		settings,
 		onBack,
 		onToggleTheme,
-		onToggleSettings,
+		onToggleBookmark,
 		onChapterChange
 	}: {
 		loading: boolean;
@@ -22,10 +26,12 @@
 		currentChapter: number;
 		showChapterSelector: boolean;
 		darkMode: boolean;
-		settingsOpen: boolean;
+		bookmarked: boolean;
+		settingsOpen?: boolean;
+		settings: Snippet;
 		onBack: () => void;
 		onToggleTheme: () => void;
-		onToggleSettings: () => void;
+		onToggleBookmark: () => void;
 		onChapterChange: (index: number) => void;
 	} = $props();
 </script>
@@ -39,6 +45,7 @@
 		onclick={onBack}
 		class="shrink-0"
 		aria-label="Back to library"
+		title="Back to library"
 	>
 		<ChevronLeft class="h-5 w-5" />
 	</Button>
@@ -71,20 +78,38 @@
 		variant="ghost"
 		size="icon"
 		class="shrink-0 rounded-full"
-		onclick={onToggleTheme}
-		aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
+		onclick={onToggleBookmark}
+		aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark this location'}
+		title={bookmarked ? 'Remove bookmark' : 'Bookmark this location'}
+		aria-pressed={bookmarked}
 	>
-		{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
+		<Bookmark class="h-5 w-5" fill={bookmarked ? 'currentColor' : 'none'} />
 	</Button>
+
 	<Button
 		variant="ghost"
 		size="icon"
 		class="shrink-0 rounded-full"
-		onclick={onToggleSettings}
-		aria-label="Reader appearance"
-		aria-expanded={settingsOpen}
-		aria-controls="reader-appearance"
+		onclick={onToggleTheme}
+		aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
+		title={darkMode ? 'Use light theme' : 'Use dark theme'}
 	>
-		<SlidersHorizontal class="h-5 w-5" />
+		{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
 	</Button>
+	<Popover.Root bind:open={settingsOpen}>
+		<Popover.Trigger
+			class="inline-flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-accent hover:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+			aria-label="Reader settings"
+			title="Reader settings"
+		>
+			<SlidersHorizontal class="h-5 w-5" />
+		</Popover.Trigger>
+		<Popover.Content
+			align="end"
+			sideOffset={20}
+			class="max-h-[calc(100vh-6rem)] w-[min(44rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border p-0 shadow-xl"
+		>
+			{@render settings()}
+		</Popover.Content>
+	</Popover.Root>
 </header>

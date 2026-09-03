@@ -16,6 +16,8 @@ telemetry.
 
 - Imports `.epub` files and extracts metadata, cover, spine, and table of contents in the browser.
 - Keeps uploaded books and reading position in IndexedDB; preferences use local storage.
+- Saves device-local bookmarks and text highlights using repagination-safe semantic locations.
+- Provides a library-wide annotations view for returning to saved passages across books.
 - Provides list, compact-grid, and comfortable-grid library views.
 - Switches between column pagination and a fit-to-screen presentation for illustrated books.
 - Supports click/tap regions, swipes, arrow keys, and Space for page navigation.

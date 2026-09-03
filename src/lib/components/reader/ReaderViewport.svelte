@@ -233,6 +233,16 @@
 	:global(.prose) {
 		color: inherit;
 	}
+	:global(.reader-highlight) {
+		border-radius: 0.15em;
+		background: color-mix(in oklab, #facc15 65%, transparent) !important;
+		color: inherit !important;
+		box-decoration-break: clone;
+		-webkit-box-decoration-break: clone;
+	}
+	:global(.dark .reader-highlight) {
+		background: color-mix(in oklab, #eab308 45%, transparent) !important;
+	}
 	:global(.dark .prose),
 	:global(.dark .prose *),
 	:global(.dark .epub-content *) {

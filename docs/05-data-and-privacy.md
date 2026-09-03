@@ -5,20 +5,23 @@ progress. Hosting-provider and browser behavior still applies.
 
 ## Stored data
 
-IndexedDB database `EpubReaderDB`, currently version 3:
+IndexedDB database `EpubReaderDB`, currently version 4:
 
-| Store          | Key       | Value                                                  |
-| -------------- | --------- | ------------------------------------------------------ |
-| `books`        | UUID      | Name, title, cover, creation time, and progress fields |
-| `bookContents` | Same UUID | Original EPUB `ArrayBuffer`                            |
+| Store          | Key       | Value                                                              |
+| -------------- | --------- | ------------------------------------------------------------------ |
+| `books`        | UUID      | Name, title, cover, creation time, and progress fields             |
+| `bookContents` | Same UUID | Original EPUB `ArrayBuffer`                                        |
+| `annotations`  | UUID      | Book ID, kind, semantic location, and optional selected-text quote |
 
 `localStorage` holds `theme`, `library-grid-mode`, and bundled-book progress under
 `book-progress-default`. Cache Storage holds application assets and successful GET responses.
 Older `current-book` data is migrated lazily to a UUID record.
 
-Import creates a new UUID; duplicate imports are allowed. Deleting an imported book removes its
-metadata and original EPUB bytes in one transaction. Clearing site data removes the library,
-preferences, and caches. There is no export, sync, or recovery feature.
+Import creates a new UUID; duplicate imports are allowed. Bookmarks and highlight records remain on
+the device and are not sent to diagnostics or a backend. Deleting an imported book removes its
+metadata, original EPUB bytes, and annotations in one transaction. Clearing site data removes the
+library, annotations, preferences, and caches. There is no export, sync, or recovery feature yet;
+the annotation format is versioned so a future export can migrate it explicitly.
 
 EPUB archives, markup, and styles are untrusted input. `sanitize-html` filters markup and archive
 assets become object URLs. This reduces risk but is not an antivirus guarantee. Remote resources
