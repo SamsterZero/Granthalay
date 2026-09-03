@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
+	import { Highlighter } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { resolve, assets } from '$app/paths';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
@@ -45,6 +46,7 @@
 	let annotationsOpen = $state(false);
 	let annotations = $state<BookAnnotation[]>([]);
 	let pendingHighlight = $state<NewBookAnnotation | null>(null);
+	let highlightActionPosition = $state<{ left: number; top: number } | null>(null);
 	let annotationStatus = $state('');
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
 	let readerPadding = $derived(readerMarginPixels(preferences.margins));
@@ -142,15 +144,23 @@
 	}
 
 	function updatePendingHighlight() {
-		pendingHighlight =
+		const selection = window.getSelection();
+		const captured =
 			contentContainer && chapters[currentChapter]
-				? captureHighlight(
-						contentContainer,
-						window.getSelection(),
-						bookId,
-						chapters[currentChapter].href
-					)
+				? captureHighlight(contentContainer, selection, bookId, chapters[currentChapter].href)
 				: null;
+		if (!captured || !selection || selection.rangeCount === 0) {
+			pendingHighlight = null;
+			highlightActionPosition = null;
+			return;
+		}
+
+		const rect = selection.getRangeAt(0).getBoundingClientRect();
+		pendingHighlight = captured;
+		highlightActionPosition = {
+			left: Math.min(window.innerWidth - 52, Math.max(52, rect.left + rect.width / 2)),
+			top: Math.max(48, rect.top - 12)
+		};
 	}
 
 	async function createHighlight() {
@@ -159,6 +169,7 @@
 			const highlight = await saveAnnotation(pendingHighlight);
 			annotations = [...annotations, highlight];
 			pendingHighlight = null;
+			highlightActionPosition = null;
 			window.getSelection()?.removeAllRanges();
 			annotationStatus = 'Highlight saved on this device.';
 		} catch {
@@ -515,13 +526,11 @@
 		showChapterSelector={showSubtitle}
 		{darkMode}
 		bookmarked={Boolean(currentBookmark)}
-		canHighlight={Boolean(pendingHighlight)}
 		{annotationsOpen}
 		{settingsOpen}
 		onBack={goBack}
 		onToggleTheme={toggleDarkMode}
 		onToggleBookmark={() => void toggleBookmark()}
-		onCreateHighlight={() => void createHighlight()}
 		onToggleAnnotations={() => {
 			annotationsOpen = !annotationsOpen;
 			settingsOpen = false;
@@ -533,6 +542,21 @@
 		onChapterChange={goToChapter}
 	/>
 	<p class="sr-only" aria-live="polite">{annotationStatus}</p>
+
+	{#if pendingHighlight && highlightActionPosition}
+		<button
+			type="button"
+			class="fixed z-[60] flex -translate-x-1/2 -translate-y-full items-center gap-1.5 rounded-full bg-foreground px-3 py-2 text-xs font-semibold text-background shadow-lg focus-visible:outline-2 focus-visible:outline-offset-2"
+			style:left={`${highlightActionPosition.left}px`}
+			style:top={`${highlightActionPosition.top}px`}
+			onpointerdown={(event) => event.preventDefault()}
+			onclick={() => void createHighlight()}
+			aria-label="Save selected text as a highlight"
+		>
+			<Highlighter class="h-4 w-4" aria-hidden="true" />
+			Highlight
+		</button>
+	{/if}
 
 	{#if annotationsOpen}
 		<ReaderAnnotations

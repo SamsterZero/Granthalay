@@ -41,9 +41,9 @@ Position is saved automatically. Theme follows the operating-system preference o
 can then be toggled. These settings belong to the current browser and deployment origin.
 
 Use the bookmark button in the reader header to save or remove the current location. To highlight,
-select text in the reading area and then choose **Highlight selected text** in the header. Open
-**Bookmarks and highlights** to revisit or remove saved annotations. Reader status messages announce
-these changes without moving keyboard focus.
+select text in the reading area and choose the contextual **Highlight** action that appears beside the
+selection. Open **Bookmarks and highlights** in the header to revisit or remove saved annotations.
+Reader status messages announce these changes without moving keyboard focus.
 
 Bookmarks attach to a chapter and normalized position, so changing font size, margins, orientation,
 or viewport width does not tie them to an obsolete page number. Highlights use the selected text and
