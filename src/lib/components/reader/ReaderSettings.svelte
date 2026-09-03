@@ -2,7 +2,6 @@
 	import { Bookmark, SlidersHorizontal } from 'lucide-svelte';
 	import ReaderAnnotations from './ReaderAnnotations.svelte';
 	import ReaderAppearance from './ReaderAppearance.svelte';
-	import { Button } from '$lib/components/ui/button';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import type { BookAnnotation } from '$lib/reader/annotations';
 	import type { ReaderPreferences } from '$lib/reader/preferences';
@@ -10,19 +9,15 @@
 	let {
 		preferences,
 		annotations,
-		bookmarked,
 		onUpdatePreferences,
 		onResetPreferences,
-		onToggleBookmark,
 		onNavigateAnnotation,
 		onRemoveAnnotation
 	}: {
 		preferences: ReaderPreferences;
 		annotations: BookAnnotation[];
-		bookmarked: boolean;
 		onUpdatePreferences: (update: Partial<ReaderPreferences>) => void;
 		onResetPreferences: () => void;
-		onToggleBookmark: () => void;
 		onNavigateAnnotation: (annotation: BookAnnotation) => void;
 		onRemoveAnnotation: (annotation: BookAnnotation) => void;
 	} = $props();
@@ -58,16 +53,6 @@
 		</Tabs.Content>
 
 		<Tabs.Content value="annotations" class="p-4">
-			<div class="mx-auto max-w-3xl">
-				<Button
-					variant={bookmarked ? 'secondary' : 'outline'}
-					onclick={onToggleBookmark}
-					aria-pressed={bookmarked}
-				>
-					<Bookmark class="h-4 w-4" fill={bookmarked ? 'currentColor' : 'none'} />
-					{bookmarked ? 'Remove bookmark here' : 'Bookmark current location'}
-				</Button>
-			</div>
 			<ReaderAnnotations
 				{annotations}
 				onNavigate={onNavigateAnnotation}

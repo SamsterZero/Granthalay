@@ -522,9 +522,11 @@
 		{currentChapter}
 		showChapterSelector={showSubtitle}
 		{darkMode}
+		bookmarked={Boolean(currentBookmark)}
 		{settingsOpen}
 		onBack={goBack}
 		onToggleTheme={toggleDarkMode}
+		onToggleBookmark={() => void toggleBookmark()}
 		onToggleSettings={() => (settingsOpen = !settingsOpen)}
 		onChapterChange={goToChapter}
 	/>
@@ -554,10 +556,8 @@
 		<ReaderSettings
 			{preferences}
 			{annotations}
-			bookmarked={Boolean(currentBookmark)}
 			onUpdatePreferences={updatePreferences}
 			onResetPreferences={resetReaderPreferences}
-			onToggleBookmark={() => void toggleBookmark()}
 			onNavigateAnnotation={(annotation) => void navigateToAnnotation(annotation)}
 			onRemoveAnnotation={(annotation) => void removeAnnotation(annotation)}
 		/>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
+	import { Bookmark, ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { EpubChapter } from '$lib/epub/engine';
 
@@ -10,9 +10,11 @@
 		currentChapter,
 		showChapterSelector,
 		darkMode,
+		bookmarked,
 		settingsOpen,
 		onBack,
 		onToggleTheme,
+		onToggleBookmark,
 		onToggleSettings,
 		onChapterChange
 	}: {
@@ -22,9 +24,11 @@
 		currentChapter: number;
 		showChapterSelector: boolean;
 		darkMode: boolean;
+		bookmarked: boolean;
 		settingsOpen: boolean;
 		onBack: () => void;
 		onToggleTheme: () => void;
+		onToggleBookmark: () => void;
 		onToggleSettings: () => void;
 		onChapterChange: (index: number) => void;
 	} = $props();
@@ -66,6 +70,17 @@
 			{/if}
 		{/if}
 	</div>
+
+	<Button
+		variant="ghost"
+		size="icon"
+		class="shrink-0 rounded-full"
+		onclick={onToggleBookmark}
+		aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark this location'}
+		aria-pressed={bookmarked}
+	>
+		<Bookmark class="h-5 w-5" fill={bookmarked ? 'currentColor' : 'none'} />
+	</Button>
 
 	<Button
 		variant="ghost"
