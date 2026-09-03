@@ -7,12 +7,14 @@
 		annotations,
 		onNavigate,
 		onRemove,
-		onClose
+		onClose,
+		embedded = false
 	}: {
 		annotations: BookAnnotation[];
 		onNavigate: (annotation: BookAnnotation) => void;
 		onRemove: (annotation: BookAnnotation) => void;
-		onClose: () => void;
+		onClose?: () => void;
+		embedded?: boolean;
 	} = $props();
 
 	function label(annotation: BookAnnotation): string {
@@ -23,7 +25,10 @@
 
 <aside
 	id="reader-annotations"
-	class="border-b border-border bg-background px-4 py-3 shadow-sm"
+	class="bg-background px-4 py-3"
+	class:border-b={!embedded}
+	class:border-border={!embedded}
+	class:shadow-sm={!embedded}
 	aria-labelledby="reader-annotations-title"
 >
 	<div class="mx-auto flex max-w-3xl items-center justify-between gap-4">
@@ -31,9 +36,11 @@
 			<h2 id="reader-annotations-title" class="text-sm font-semibold">Bookmarks and highlights</h2>
 			<p class="text-xs text-muted-foreground">Stored only in this browser.</p>
 		</div>
-		<Button variant="ghost" size="icon-sm" onclick={onClose} aria-label="Close annotations">
-			<X class="h-4 w-4" />
-		</Button>
+		{#if onClose}
+			<Button variant="ghost" size="icon-sm" onclick={onClose} aria-label="Close annotations">
+				<X class="h-4 w-4" />
+			</Button>
+		{/if}
 	</div>
 
 	{#if annotations.length === 0}

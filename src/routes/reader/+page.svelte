@@ -3,10 +3,9 @@
 	import { Highlighter } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
 	import { resolve, assets } from '$app/paths';
-	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
-	import ReaderAnnotations from '$lib/components/reader/ReaderAnnotations.svelte';
 	import ReaderFooter from '$lib/components/reader/ReaderFooter.svelte';
 	import ReaderHeader from '$lib/components/reader/ReaderHeader.svelte';
+	import ReaderSettings from '$lib/components/reader/ReaderSettings.svelte';
 	import ReaderViewport from '$lib/components/reader/ReaderViewport.svelte';
 	import {
 		deleteAnnotation,
@@ -43,7 +42,6 @@
 	let totalPages = $state(0);
 	let darkMode = $state(false);
 	let settingsOpen = $state(false);
-	let annotationsOpen = $state(false);
 	let annotations = $state<BookAnnotation[]>([]);
 	let pendingHighlight = $state<NewBookAnnotation | null>(null);
 	let highlightActionPosition = $state<{ left: number; top: number } | null>(null);
@@ -194,7 +192,6 @@
 			return;
 		}
 
-		annotationsOpen = false;
 		settingsOpen = false;
 		if (chapter === currentChapter && totalPages > 0) {
 			currentPage = progressionToPage(annotation.location.progression, totalPages);
@@ -525,20 +522,10 @@
 		{currentChapter}
 		showChapterSelector={showSubtitle}
 		{darkMode}
-		bookmarked={Boolean(currentBookmark)}
-		{annotationsOpen}
 		{settingsOpen}
 		onBack={goBack}
 		onToggleTheme={toggleDarkMode}
-		onToggleBookmark={() => void toggleBookmark()}
-		onToggleAnnotations={() => {
-			annotationsOpen = !annotationsOpen;
-			settingsOpen = false;
-		}}
-		onToggleSettings={() => {
-			settingsOpen = !settingsOpen;
-			annotationsOpen = false;
-		}}
+		onToggleSettings={() => (settingsOpen = !settingsOpen)}
 		onChapterChange={goToChapter}
 	/>
 	<p class="sr-only" aria-live="polite">{annotationStatus}</p>
@@ -563,21 +550,16 @@
 		</button>
 	{/if}
 
-	{#if annotationsOpen}
-		<ReaderAnnotations
-			{annotations}
-			onNavigate={(annotation) => void navigateToAnnotation(annotation)}
-			onRemove={(annotation) => void removeAnnotation(annotation)}
-			onClose={() => (annotationsOpen = false)}
-		/>
-	{/if}
-
 	{#if settingsOpen}
-		<ReaderAppearance
+		<ReaderSettings
 			{preferences}
-			onUpdate={updatePreferences}
-			onReset={resetReaderPreferences}
-			resetLabel="Use global defaults"
+			{annotations}
+			bookmarked={Boolean(currentBookmark)}
+			onUpdatePreferences={updatePreferences}
+			onResetPreferences={resetReaderPreferences}
+			onToggleBookmark={() => void toggleBookmark()}
+			onNavigateAnnotation={(annotation) => void navigateToAnnotation(annotation)}
+			onRemoveAnnotation={(annotation) => void removeAnnotation(annotation)}
 		/>
 	{/if}
 

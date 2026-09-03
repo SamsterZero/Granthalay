@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Bookmark, ChevronLeft, List, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
+	import { ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { EpubChapter } from '$lib/epub/engine';
 
@@ -10,13 +10,9 @@
 		currentChapter,
 		showChapterSelector,
 		darkMode,
-		bookmarked,
-		annotationsOpen,
 		settingsOpen,
 		onBack,
 		onToggleTheme,
-		onToggleBookmark,
-		onToggleAnnotations,
 		onToggleSettings,
 		onChapterChange
 	}: {
@@ -26,13 +22,9 @@
 		currentChapter: number;
 		showChapterSelector: boolean;
 		darkMode: boolean;
-		bookmarked: boolean;
-		annotationsOpen: boolean;
 		settingsOpen: boolean;
 		onBack: () => void;
 		onToggleTheme: () => void;
-		onToggleBookmark: () => void;
-		onToggleAnnotations: () => void;
 		onToggleSettings: () => void;
 		onChapterChange: (index: number) => void;
 	} = $props();
@@ -79,28 +71,6 @@
 		variant="ghost"
 		size="icon"
 		class="shrink-0 rounded-full"
-		onclick={onToggleBookmark}
-		aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark this location'}
-		aria-pressed={bookmarked}
-	>
-		<Bookmark class="h-5 w-5" fill={bookmarked ? 'currentColor' : 'none'} />
-	</Button>
-	<Button
-		variant="ghost"
-		size="icon"
-		class="shrink-0 rounded-full"
-		onclick={onToggleAnnotations}
-		aria-label="Bookmarks and highlights"
-		aria-expanded={annotationsOpen}
-		aria-controls="reader-annotations"
-	>
-		<List class="h-5 w-5" />
-	</Button>
-
-	<Button
-		variant="ghost"
-		size="icon"
-		class="shrink-0 rounded-full"
 		onclick={onToggleTheme}
 		aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
 	>
@@ -111,9 +81,9 @@
 		size="icon"
 		class="shrink-0 rounded-full"
 		onclick={onToggleSettings}
-		aria-label="Reader appearance"
+		aria-label="Reader settings"
 		aria-expanded={settingsOpen}
-		aria-controls="reader-appearance"
+		aria-controls="reader-settings"
 	>
 		<SlidersHorizontal class="h-5 w-5" />
 	</Button>

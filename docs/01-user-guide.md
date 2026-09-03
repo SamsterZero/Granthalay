@@ -40,10 +40,10 @@ external destinations are disabled so opening a local book cannot disclose readi
 Position is saved automatically. Theme follows the operating-system preference on first use and
 can then be toggled. These settings belong to the current browser and deployment origin.
 
-Use the bookmark button in the reader header to save or remove the current location. To highlight,
-select text in the reading area and choose the contextual **Highlight** action that appears beside the
-selection. Open **Bookmarks and highlights** in the header to revisit or remove saved annotations.
-Reader status messages announce these changes without moving keyboard focus.
+Open **Reader settings** and choose the **Annotations** tab to save or remove a bookmark at the
+current location, revisit saved annotations, or remove them. To highlight, select text in the reading
+area and choose the contextual **Highlight** action that appears beside the selection. Reader status
+messages announce these changes without moving keyboard focus.
 
 Bookmarks attach to a chapter and normalized position, so changing font size, margins, orientation,
 or viewport width does not tie them to an obsolete page number. Highlights use the selected text and
