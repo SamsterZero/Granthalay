@@ -43,6 +43,7 @@
 		onclick={onBack}
 		class="shrink-0"
 		aria-label="Back to library"
+		title="Back to library"
 	>
 		<ChevronLeft class="h-5 w-5" />
 	</Button>
@@ -77,6 +78,7 @@
 		class="shrink-0 rounded-full"
 		onclick={onToggleBookmark}
 		aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark this location'}
+		title={bookmarked ? 'Remove bookmark' : 'Bookmark this location'}
 		aria-pressed={bookmarked}
 	>
 		<Bookmark class="h-5 w-5" fill={bookmarked ? 'currentColor' : 'none'} />
@@ -88,6 +90,7 @@
 		class="shrink-0 rounded-full"
 		onclick={onToggleTheme}
 		aria-label={darkMode ? 'Use light theme' : 'Use dark theme'}
+		title={darkMode ? 'Use light theme' : 'Use dark theme'}
 	>
 		{#if darkMode}<Sun class="h-5 w-5" />{:else}<Moon class="h-5 w-5" />{/if}
 	</Button>
@@ -97,6 +100,7 @@
 		class="shrink-0 rounded-full"
 		onclick={onToggleSettings}
 		aria-label="Reader settings"
+		title="Reader settings"
 		aria-expanded={settingsOpen}
 		aria-controls="reader-settings"
 	>
