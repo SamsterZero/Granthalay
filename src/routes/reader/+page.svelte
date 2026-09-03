@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve, assets } from '$app/paths';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
+	import ReaderAnnotations from '$lib/components/reader/ReaderAnnotations.svelte';
 	import ReaderFooter from '$lib/components/reader/ReaderFooter.svelte';
 	import ReaderHeader from '$lib/components/reader/ReaderHeader.svelte';
 	import ReaderViewport from '$lib/components/reader/ReaderViewport.svelte';
@@ -12,7 +13,8 @@
 		saveAnnotation,
 		updateBookProgress
 	} from '$lib/db';
-	import type { BookAnnotation } from '$lib/reader/annotations';
+	import type { BookAnnotation, NewBookAnnotation } from '$lib/reader/annotations';
+	import { captureHighlight, renderHighlights } from '$lib/reader/highlights';
 	import type { EpubChapter } from '$lib/epub/engine';
 	import { pageToProgression, progressionToPage, repaginatePage } from '$lib/reader/pagination';
 	import { resolveInternalNavigation } from '$lib/reader/navigation';
@@ -40,7 +42,10 @@
 	let totalPages = $state(0);
 	let darkMode = $state(false);
 	let settingsOpen = $state(false);
+	let annotationsOpen = $state(false);
 	let annotations = $state<BookAnnotation[]>([]);
+	let pendingHighlight = $state<NewBookAnnotation | null>(null);
+	let annotationStatus = $state('');
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
 	let readerPadding = $derived(readerMarginPixels(preferences.margins));
 	let typographyOverridesAllowed = $derived(
@@ -91,7 +96,11 @@
 			currentPage = loaded.currentPage;
 			initialProgression = loaded.initialProgression;
 			chapterCSS = chapters[currentChapter].css;
-			annotations = await getBookAnnotations(bookId);
+			try {
+				annotations = await getBookAnnotations(bookId);
+			} catch {
+				annotationStatus = 'Saved annotations are unavailable, but reading can continue.';
+			}
 			loading = false;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load EPUB';
@@ -109,21 +118,98 @@
 
 	async function toggleBookmark() {
 		if (!chapters[currentChapter]) return;
-		if (currentBookmark) {
-			await deleteAnnotation(currentBookmark.id);
-			annotations = annotations.filter((annotation) => annotation.id !== currentBookmark?.id);
+		try {
+			if (currentBookmark) {
+				await deleteAnnotation(currentBookmark.id);
+				annotations = annotations.filter((annotation) => annotation.id !== currentBookmark?.id);
+				annotationStatus = 'Bookmark removed.';
+				return;
+			}
+
+			const bookmark = await saveAnnotation({
+				bookId,
+				kind: 'bookmark',
+				location: {
+					href: chapters[currentChapter].href,
+					progression: pageToProgression(currentPage, totalPages)
+				}
+			});
+			annotations = [...annotations, bookmark];
+			annotationStatus = 'Bookmark saved on this device.';
+		} catch {
+			annotationStatus = 'The bookmark could not be saved. Browser storage may be unavailable.';
+		}
+	}
+
+	function updatePendingHighlight() {
+		pendingHighlight =
+			contentContainer && chapters[currentChapter]
+				? captureHighlight(
+						contentContainer,
+						window.getSelection(),
+						bookId,
+						chapters[currentChapter].href
+					)
+				: null;
+	}
+
+	async function createHighlight() {
+		if (!pendingHighlight) return;
+		try {
+			const highlight = await saveAnnotation(pendingHighlight);
+			annotations = [...annotations, highlight];
+			pendingHighlight = null;
+			window.getSelection()?.removeAllRanges();
+			annotationStatus = 'Highlight saved on this device.';
+		} catch {
+			annotationStatus = 'The highlight could not be saved. Browser storage may be unavailable.';
+		}
+	}
+
+	async function removeAnnotation(annotation: BookAnnotation) {
+		try {
+			await deleteAnnotation(annotation.id);
+			annotations = annotations.filter((item) => item.id !== annotation.id);
+			annotationStatus = `${annotation.kind === 'highlight' ? 'Highlight' : 'Bookmark'} removed.`;
+		} catch {
+			annotationStatus = 'The annotation could not be removed. Browser storage may be unavailable.';
+		}
+	}
+
+	async function navigateToAnnotation(annotation: BookAnnotation) {
+		const chapter = chapters.findIndex((item) => item.href === annotation.location.href);
+		if (chapter < 0) {
+			annotationStatus = 'This annotation’s chapter is no longer available.';
 			return;
 		}
 
-		const bookmark = await saveAnnotation({
-			bookId,
-			kind: 'bookmark',
-			location: {
-				href: chapters[currentChapter].href,
-				progression: pageToProgression(currentPage, totalPages)
-			}
-		});
-		annotations = [...annotations, bookmark];
+		annotationsOpen = false;
+		settingsOpen = false;
+		if (chapter === currentChapter && totalPages > 0) {
+			currentPage = progressionToPage(annotation.location.progression, totalPages);
+		} else {
+			initialProgression = annotation.location.progression;
+			goToChapter(chapter);
+		}
+		await tick();
+		if (annotation.kind === 'highlight') {
+			setTimeout(() => {
+				const mark = contentContainer?.querySelector<HTMLElement>(
+					`mark[data-annotation-id="${CSS.escape(annotation.id)}"]`
+				);
+				if (!mark) {
+					annotationStatus = 'The highlighted text could not be found in this edition.';
+				} else if (preferences.navigation === 'scroll') {
+					mark.scrollIntoView({ block: 'center' });
+				} else if (containerWidth > 0) {
+					currentPage = Math.min(
+						totalPages - 1,
+						Math.max(0, Math.floor(mark.offsetLeft / containerWidth))
+					);
+				}
+			}, 150);
+		}
+		annotationStatus = `${annotation.kind === 'highlight' ? 'Highlight' : 'Bookmark'} opened.`;
 	}
 
 	function applyReaderTheme(theme: ReaderPreferences['theme']) {
@@ -259,6 +345,16 @@
 			style.textContent = chapterCSS;
 			document.head.appendChild(style);
 		}
+	});
+
+	$effect(() => {
+		const container = contentContainer;
+		const href = chapters[currentChapter]?.href;
+		const chapterHighlights = annotations.filter(
+			(annotation) => annotation.kind === 'highlight' && annotation.location.href === href
+		);
+		if (!container || !href) return;
+		void tick().then(() => renderHighlights(container, chapterHighlights));
 	});
 
 	function nextPage() {
@@ -408,6 +504,7 @@
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
+<svelte:document onselectionchange={updatePendingHighlight} />
 
 <div class="flex h-screen flex-col bg-background font-sans">
 	<ReaderHeader
@@ -418,13 +515,33 @@
 		showChapterSelector={showSubtitle}
 		{darkMode}
 		bookmarked={Boolean(currentBookmark)}
+		canHighlight={Boolean(pendingHighlight)}
+		{annotationsOpen}
 		{settingsOpen}
 		onBack={goBack}
 		onToggleTheme={toggleDarkMode}
 		onToggleBookmark={() => void toggleBookmark()}
-		onToggleSettings={() => (settingsOpen = !settingsOpen)}
+		onCreateHighlight={() => void createHighlight()}
+		onToggleAnnotations={() => {
+			annotationsOpen = !annotationsOpen;
+			settingsOpen = false;
+		}}
+		onToggleSettings={() => {
+			settingsOpen = !settingsOpen;
+			annotationsOpen = false;
+		}}
 		onChapterChange={goToChapter}
 	/>
+	<p class="sr-only" aria-live="polite">{annotationStatus}</p>
+
+	{#if annotationsOpen}
+		<ReaderAnnotations
+			{annotations}
+			onNavigate={(annotation) => void navigateToAnnotation(annotation)}
+			onRemove={(annotation) => void removeAnnotation(annotation)}
+			onClose={() => (annotationsOpen = false)}
+		/>
+	{/if}
 
 	{#if settingsOpen}
 		<ReaderAppearance

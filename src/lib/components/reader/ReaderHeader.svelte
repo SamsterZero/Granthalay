@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { Bookmark, ChevronLeft, Moon, SlidersHorizontal, Sun } from 'lucide-svelte';
+	import {
+		Bookmark,
+		ChevronLeft,
+		Highlighter,
+		List,
+		Moon,
+		SlidersHorizontal,
+		Sun
+	} from 'lucide-svelte';
 	import { Button } from '$lib/components/ui/button';
 	import type { EpubChapter } from '$lib/epub/engine';
 
@@ -11,10 +19,14 @@
 		showChapterSelector,
 		darkMode,
 		bookmarked,
+		canHighlight,
+		annotationsOpen,
 		settingsOpen,
 		onBack,
 		onToggleTheme,
 		onToggleBookmark,
+		onCreateHighlight,
+		onToggleAnnotations,
 		onToggleSettings,
 		onChapterChange
 	}: {
@@ -25,10 +37,14 @@
 		showChapterSelector: boolean;
 		darkMode: boolean;
 		bookmarked: boolean;
+		canHighlight: boolean;
+		annotationsOpen: boolean;
 		settingsOpen: boolean;
 		onBack: () => void;
 		onToggleTheme: () => void;
 		onToggleBookmark: () => void;
+		onCreateHighlight: () => void;
+		onToggleAnnotations: () => void;
 		onToggleSettings: () => void;
 		onChapterChange: (index: number) => void;
 	} = $props();
@@ -80,6 +96,27 @@
 		aria-pressed={bookmarked}
 	>
 		<Bookmark class="h-5 w-5" fill={bookmarked ? 'currentColor' : 'none'} />
+	</Button>
+	<Button
+		variant="ghost"
+		size="icon"
+		class="shrink-0 rounded-full"
+		onclick={onCreateHighlight}
+		disabled={!canHighlight}
+		aria-label="Highlight selected text"
+	>
+		<Highlighter class="h-5 w-5" />
+	</Button>
+	<Button
+		variant="ghost"
+		size="icon"
+		class="shrink-0 rounded-full"
+		onclick={onToggleAnnotations}
+		aria-label="Bookmarks and highlights"
+		aria-expanded={annotationsOpen}
+		aria-controls="reader-annotations"
+	>
+		<List class="h-5 w-5" />
 	</Button>
 
 	<Button

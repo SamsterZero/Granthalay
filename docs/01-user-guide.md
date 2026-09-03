@@ -40,11 +40,17 @@ external destinations are disabled so opening a local book cannot disclose readi
 Position is saved automatically. Theme follows the operating-system preference on first use and
 can then be toggled. These settings belong to the current browser and deployment origin.
 
-Use the bookmark button in the reader header to save or remove the current location. A bookmark is
-attached to its chapter and normalized position, so changing font size, margins, orientation, or
-viewport width does not tie it to an obsolete rendered page number. Bookmark data stays in this
-browser and is removed when its imported book is deleted. The local annotation format also supports
-text-quote highlight records; selection and highlight rendering controls are still in development.
+Use the bookmark button in the reader header to save or remove the current location. To highlight,
+select text in the reading area and then choose **Highlight selected text** in the header. Open
+**Bookmarks and highlights** to revisit or remove saved annotations. Reader status messages announce
+these changes without moving keyboard focus.
+
+Bookmarks attach to a chapter and normalized position, so changing font size, margins, orientation,
+or viewport width does not tie them to an obsolete page number. Highlights use the selected text and
+nearby context to find the passage again when the chapter is rendered. If a publication changes and
+the quote can no longer be found, the saved record remains available for removal instead of being
+silently moved to unrelated text. All annotation data stays in this browser and is removed when its
+imported book is deleted.
 
 Open **Reading settings** from the library top bar to set global defaults for font size, line height,
 margins, alignment, theme, and RTL, LTR, or scrolling navigation. The same controls in a reader save
