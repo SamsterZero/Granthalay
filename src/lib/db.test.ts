@@ -113,6 +113,28 @@ describe('annotations', () => {
 		expect(await getBookAnnotations('book-1')).toEqual([]);
 	});
 
+	it('copies proxy-backed highlight fields into an IndexedDB-cloneable record', async () => {
+		const location = new Proxy(
+			{ href: 'text/chapter.xhtml', progression: 0.4 },
+			{ get: (target, property, receiver) => Reflect.get(target, property, receiver) }
+		);
+		const selector = new Proxy(
+			{ exact: 'selected text', prefix: 'before ', suffix: ' after' },
+			{ get: (target, property, receiver) => Reflect.get(target, property, receiver) }
+		);
+
+		const saved = await saveAnnotation({
+			bookId: 'book-1',
+			kind: 'highlight',
+			location,
+			selector
+		});
+
+		expect(saved.location).not.toBe(location);
+		expect(saved.selector).not.toBe(selector);
+		expect(await getBookAnnotations('book-1')).toEqual([saved]);
+	});
+
 	it('does not expose invalid records read from storage', async () => {
 		await saveAnnotation({
 			bookId: 'book-1',

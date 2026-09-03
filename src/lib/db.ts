@@ -198,9 +198,23 @@ export async function deleteBookById(id: string): Promise<void> {
 export async function saveAnnotation(input: NewBookAnnotation): Promise<BookAnnotation> {
 	const now = Date.now();
 	const annotation: BookAnnotation = {
-		...input,
 		formatVersion: ANNOTATION_FORMAT_VERSION,
 		id: crypto.randomUUID(),
+		bookId: input.bookId,
+		kind: input.kind,
+		location: {
+			href: input.location.href,
+			progression: input.location.progression
+		},
+		...(input.selector
+			? {
+					selector: {
+						exact: input.selector.exact,
+						...(input.selector.prefix !== undefined ? { prefix: input.selector.prefix } : {}),
+						...(input.selector.suffix !== undefined ? { suffix: input.selector.suffix } : {})
+					}
+				}
+			: {}),
 		createdAt: now,
 		updatedAt: now
 	};
