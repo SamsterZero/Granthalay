@@ -6,7 +6,13 @@
 	import ReaderFooter from '$lib/components/reader/ReaderFooter.svelte';
 	import ReaderHeader from '$lib/components/reader/ReaderHeader.svelte';
 	import ReaderViewport from '$lib/components/reader/ReaderViewport.svelte';
-	import { updateBookProgress } from '$lib/db';
+	import {
+		deleteAnnotation,
+		getBookAnnotations,
+		saveAnnotation,
+		updateBookProgress
+	} from '$lib/db';
+	import type { BookAnnotation } from '$lib/reader/annotations';
 	import type { EpubChapter } from '$lib/epub/engine';
 	import { pageToProgression, progressionToPage, repaginatePage } from '$lib/reader/pagination';
 	import { resolveInternalNavigation } from '$lib/reader/navigation';
@@ -34,6 +40,7 @@
 	let totalPages = $state(0);
 	let darkMode = $state(false);
 	let settingsOpen = $state(false);
+	let annotations = $state<BookAnnotation[]>([]);
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
 	let readerPadding = $derived(readerMarginPixels(preferences.margins));
 	let typographyOverridesAllowed = $derived(
@@ -60,6 +67,15 @@
 		count += currentPage + 1;
 		return count;
 	});
+	let currentBookmark = $derived(
+		annotations.find(
+			(annotation) =>
+				annotation.kind === 'bookmark' &&
+				annotation.location.href === chapters[currentChapter]?.href &&
+				Math.abs(annotation.location.progression - pageToProgression(currentPage, totalPages)) <
+					0.01
+		)
+	);
 
 	onMount(async () => {
 		const params = new URLSearchParams(window.location.search);
@@ -75,6 +91,7 @@
 			currentPage = loaded.currentPage;
 			initialProgression = loaded.initialProgression;
 			chapterCSS = chapters[currentChapter].css;
+			annotations = await getBookAnnotations(bookId);
 			loading = false;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to load EPUB';
@@ -88,6 +105,25 @@
 
 	function toggleDarkMode() {
 		updatePreferences({ theme: darkMode ? 'light' : 'dark' });
+	}
+
+	async function toggleBookmark() {
+		if (!chapters[currentChapter]) return;
+		if (currentBookmark) {
+			await deleteAnnotation(currentBookmark.id);
+			annotations = annotations.filter((annotation) => annotation.id !== currentBookmark?.id);
+			return;
+		}
+
+		const bookmark = await saveAnnotation({
+			bookId,
+			kind: 'bookmark',
+			location: {
+				href: chapters[currentChapter].href,
+				progression: pageToProgression(currentPage, totalPages)
+			}
+		});
+		annotations = [...annotations, bookmark];
 	}
 
 	function applyReaderTheme(theme: ReaderPreferences['theme']) {
@@ -381,9 +417,11 @@
 		{currentChapter}
 		showChapterSelector={showSubtitle}
 		{darkMode}
+		bookmarked={Boolean(currentBookmark)}
 		{settingsOpen}
 		onBack={goBack}
 		onToggleTheme={toggleDarkMode}
+		onToggleBookmark={() => void toggleBookmark()}
 		onToggleSettings={() => (settingsOpen = !settingsOpen)}
 		onChapterChange={goToChapter}
 	/>

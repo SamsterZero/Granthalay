@@ -32,6 +32,10 @@ separate stores. Opening and reading a book perform a full parse. The reader mea
 an off-screen element and selects a layout heuristically. It persists the chapter plus a normalized
 position within that chapter, alongside page/global progress for display and backward compatibility,
 so repagination can restore the nearest reading position instead of reusing a stale page number.
+Bookmarks and highlights use a versioned portable annotation record in IndexedDB. Locations identify
+the EPUB spine href and a normalized progression rather than a rendered page number; highlights also
+carry an exact text quote with optional surrounding context so a later renderer can re-anchor them
+after ordinary typography and viewport changes.
 Global reader defaults use a versioned local-storage record. Per-book overrides use keys derived from
 the book ID and fall back to that global record when absent. Values are validated and bounded before
 use; changes trigger semantic repagination, while typography overrides are limited to detected

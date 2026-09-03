@@ -1,6 +1,14 @@
+import {
+	ANNOTATION_FORMAT_VERSION,
+	isBookAnnotation,
+	type BookAnnotation,
+	type NewBookAnnotation
+} from '$lib/reader/annotations';
+
 const DB_NAME = 'EpubReaderDB';
 const STORE_NAME = 'books';
-const DB_VERSION = 3;
+const ANNOTATION_STORE_NAME = 'annotations';
+const DB_VERSION = 4;
 
 export interface BookMetadata {
 	id: string;
@@ -40,6 +48,10 @@ function getDB(): Promise<IDBDatabase> {
 			} else if (oldVersion === 1) {
 				// v1 store exists, no structural changes needed
 				// Migration happens lazily in getAllBooks
+			}
+			if (!db.objectStoreNames.contains(ANNOTATION_STORE_NAME)) {
+				const annotations = db.createObjectStore(ANNOTATION_STORE_NAME, { keyPath: 'id' });
+				annotations.createIndex('bookId', 'bookId', { unique: false });
 			}
 		};
 	});
@@ -155,7 +167,10 @@ export async function getBookById(id: string): Promise<BookRecord | null> {
 export async function deleteBookById(id: string): Promise<void> {
 	const db = await getDB();
 	return new Promise((resolve, reject) => {
-		const transaction = db.transaction([STORE_NAME, 'bookContents'], 'readwrite');
+		const transaction = db.transaction(
+			[STORE_NAME, 'bookContents', ANNOTATION_STORE_NAME],
+			'readwrite'
+		);
 		let setupError: unknown;
 
 		transaction.oncomplete = () => resolve();
@@ -168,10 +183,60 @@ export async function deleteBookById(id: string): Promise<void> {
 		try {
 			transaction.objectStore(STORE_NAME).delete(id);
 			transaction.objectStore('bookContents').delete(id);
+			const annotationStore = transaction.objectStore(ANNOTATION_STORE_NAME);
+			annotationStore.index('bookId').getAllKeys(id).onsuccess = (event) => {
+				const keys = (event.target as IDBRequest<IDBValidKey[]>).result;
+				for (const key of keys) annotationStore.delete(key);
+			};
 		} catch (error) {
 			setupError = error;
 			transaction.abort();
 		}
+	});
+}
+
+export async function saveAnnotation(input: NewBookAnnotation): Promise<BookAnnotation> {
+	const now = Date.now();
+	const annotation: BookAnnotation = {
+		...input,
+		formatVersion: ANNOTATION_FORMAT_VERSION,
+		id: crypto.randomUUID(),
+		createdAt: now,
+		updatedAt: now
+	};
+	if (!isBookAnnotation(annotation)) throw new TypeError('Invalid annotation');
+
+	const db = await getDB();
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction(ANNOTATION_STORE_NAME, 'readwrite');
+		transaction.objectStore(ANNOTATION_STORE_NAME).add(annotation);
+		transaction.oncomplete = () => resolve(annotation);
+		transaction.onerror = () => reject(transaction.error);
+	});
+}
+
+export async function getBookAnnotations(bookId: string): Promise<BookAnnotation[]> {
+	const db = await getDB();
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction(ANNOTATION_STORE_NAME, 'readonly');
+		const request = transaction.objectStore(ANNOTATION_STORE_NAME).index('bookId').getAll(bookId);
+		request.onsuccess = () =>
+			resolve(
+				(request.result as unknown[])
+					.filter(isBookAnnotation)
+					.sort((a, b) => a.createdAt - b.createdAt)
+			);
+		request.onerror = () => reject(request.error);
+	});
+}
+
+export async function deleteAnnotation(id: string): Promise<void> {
+	const db = await getDB();
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction(ANNOTATION_STORE_NAME, 'readwrite');
+		transaction.objectStore(ANNOTATION_STORE_NAME).delete(id);
+		transaction.oncomplete = () => resolve();
+		transaction.onerror = () => reject(transaction.error);
 	});
 }
 
