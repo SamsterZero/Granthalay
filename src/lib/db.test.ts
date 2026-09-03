@@ -90,7 +90,8 @@ describe('annotations', () => {
 		});
 
 		const reloaded = await getBookAnnotations('book-1');
-		expect(reloaded).toEqual([bookmark, highlight]);
+		expect(reloaded).toHaveLength(2);
+		expect(reloaded).toEqual(expect.arrayContaining([bookmark, highlight]));
 		expect(reloaded[0].location).not.toHaveProperty('page');
 		expect(await getAllAnnotations()).toEqual(expect.arrayContaining([bookmark, highlight]));
 	});

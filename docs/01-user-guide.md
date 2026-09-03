@@ -64,9 +64,10 @@ preferences only for that book; **Use global defaults** removes its custom prefe
 changes apply only to reflowable text; covers, SVG illustrations, and image-sensitive pages retain
 their publisher layout. Preferences are stored only in this browser and work offline.
 
-The Settings destination is responsive: controls stack on phones, spread into columns on tablets,
-and use a settings workspace with supporting privacy and behavior guidance on desktop. The shared
-bottom app bar remains available for returning to Library or Annotations.
+The Settings destination is responsive and borderless. On phones and tablets, use its menu button to
+jump between settings sections; desktops show the same expandable section navigation as a persistent
+sidebar. Controls stack or spread into columns with the available width, and the shared bottom app
+bar remains available for returning to Library or Annotations.
 
 ## Install and protect your data
 

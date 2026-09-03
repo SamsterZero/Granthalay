@@ -2,9 +2,11 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { BookOpen, Database, RotateCcw, ShieldCheck } from 'lucide-svelte';
+	import { BookOpen, Database, Menu, ShieldCheck } from 'lucide-svelte';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import * as Sheet from '$lib/components/ui/sheet';
 	import { getAllAnnotations } from '$lib/db';
 	import {
 		DEFAULT_READER_PREFERENCES,
@@ -13,8 +15,14 @@
 		type ReaderPreferences
 	} from '$lib/reader/preferences';
 
+	const settingsSections = [
+		{ id: 'reading', label: 'Reading' },
+		{ id: 'storage-privacy', label: 'Storage & privacy' }
+	] as const;
+
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
 	let annotationCount = $state(0);
+	let menuOpen = $state(false);
 
 	onMount(async () => {
 		preferences = loadGlobalReaderPreferences();
@@ -45,6 +53,11 @@
 		document.documentElement.classList.toggle('dark', dark);
 	}
 
+	function showSection(id: (typeof settingsSections)[number]['id']) {
+		menuOpen = false;
+		document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	}
+
 	function openLibrary() {
 		goto(resolve('/'));
 	}
@@ -58,58 +71,97 @@
 
 <div class="min-h-screen bg-background px-4 pt-5 pb-24 font-sans text-foreground sm:px-6 lg:px-8">
 	<header class="mx-auto max-w-7xl">
-		<p class="text-sm font-medium text-primary">Granthalay preferences</p>
-		<h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Reading settings</h1>
-		<p class="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">
-			Choose defaults for books that do not have their own reader preferences.
-		</p>
+		<div class="flex items-start gap-3">
+			<Sheet.Root bind:open={menuOpen}>
+				<Sheet.Trigger>
+					{#snippet child({ props })}
+						<Button
+							variant="ghost"
+							size="icon"
+							class="mt-1 shrink-0 lg:hidden"
+							aria-label="Open settings menu"
+							{...props}
+						>
+							<Menu class="h-5 w-5" />
+						</Button>
+					{/snippet}
+				</Sheet.Trigger>
+				<Sheet.Content side="left" class="w-72">
+					<Sheet.Header>
+						<Sheet.Title>Settings</Sheet.Title>
+						<Sheet.Description>Choose a section.</Sheet.Description>
+					</Sheet.Header>
+					<nav class="grid gap-1 px-3" aria-label="Settings sections">
+						{#each settingsSections as section (section.id)}
+							<button
+								type="button"
+								class="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-muted focus-visible:outline-2"
+								onclick={() => showSection(section.id)}
+							>
+								{section.label}
+							</button>
+						{/each}
+					</nav>
+				</Sheet.Content>
+			</Sheet.Root>
+
+			<div>
+				<p class="text-sm font-medium text-primary">Granthalay preferences</p>
+				<h1 class="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Settings</h1>
+				<p class="mt-1 text-sm text-muted-foreground">Defaults and on-device preferences.</p>
+			</div>
+		</div>
 	</header>
 
-	<main class="mx-auto mt-6 grid max-w-7xl gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
-		<section class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-			<ReaderAppearance
-				{preferences}
-				onUpdate={updatePreferences}
-				onReset={resetPreferences}
-				heading="Global reading defaults"
-				resetLabel="Reset defaults"
-				embedded
-			/>
-		</section>
-
-		<aside class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1" aria-label="About these settings">
-			<section class="rounded-xl border border-border bg-card p-4 shadow-sm">
-				<BookOpen class="h-5 w-5 text-primary" aria-hidden="true" />
-				<h2 class="mt-3 text-sm font-semibold">Per-book overrides</h2>
-				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-					Changes made inside a reader apply only to that book and take priority over these
-					defaults.
-				</p>
-			</section>
-
-			<section class="rounded-xl border border-border bg-card p-4 shadow-sm">
-				<Database class="h-5 w-5 text-primary" aria-hidden="true" />
-				<h2 class="mt-3 text-sm font-semibold">Stored on this device</h2>
-				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-					Preferences belong to this browser profile and remain available offline.
-				</p>
-			</section>
-
-			<section class="rounded-xl border border-border bg-card p-4 shadow-sm">
-				<ShieldCheck class="h-5 w-5 text-primary" aria-hidden="true" />
-				<h2 class="mt-3 text-sm font-semibold">Private by default</h2>
-				<p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-					Reading preferences are not sent to an account, backend, or diagnostics service.
-				</p>
-			</section>
-
-			<div
-				class="flex items-center gap-2 px-1 text-xs text-muted-foreground sm:col-span-3 lg:col-span-1"
-			>
-				<RotateCcw class="h-4 w-4 shrink-0" aria-hidden="true" />
-				Reset restores Granthalay’s original defaults.
-			</div>
+	<main class="mx-auto mt-6 grid max-w-7xl gap-8 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start">
+		<aside class="sticky top-6 hidden lg:block">
+			<nav class="grid gap-1" aria-label="Settings sections">
+				{#each settingsSections as section (section.id)}
+					<button
+						type="button"
+						class="rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
+						onclick={() => showSection(section.id)}
+					>
+						{section.label}
+					</button>
+				{/each}
+			</nav>
 		</aside>
+
+		<div class="min-w-0 space-y-10">
+			<section id="reading" class="scroll-mt-6">
+				<ReaderAppearance
+					{preferences}
+					onUpdate={updatePreferences}
+					onReset={resetPreferences}
+					heading="Reading defaults"
+					resetLabel="Reset"
+					embedded
+				/>
+				<p class="px-4 text-xs text-muted-foreground">Per-book settings override these defaults.</p>
+			</section>
+
+			<section id="storage-privacy" class="scroll-mt-6 px-4">
+				<h2 class="text-base font-semibold">Storage & privacy</h2>
+				<div class="mt-4 grid gap-5 sm:grid-cols-3">
+					<div>
+						<BookOpen class="h-5 w-5 text-primary" aria-hidden="true" />
+						<h3 class="mt-2 text-sm font-semibold">Per-book</h3>
+						<p class="mt-1 text-xs text-muted-foreground">Reader changes stay with that book.</p>
+					</div>
+					<div>
+						<Database class="h-5 w-5 text-primary" aria-hidden="true" />
+						<h3 class="mt-2 text-sm font-semibold">On device</h3>
+						<p class="mt-1 text-xs text-muted-foreground">Preferences work offline here.</p>
+					</div>
+					<div>
+						<ShieldCheck class="h-5 w-5 text-primary" aria-hidden="true" />
+						<h3 class="mt-2 text-sm font-semibold">Private</h3>
+						<p class="mt-1 text-xs text-muted-foreground">Nothing is sent to a backend.</p>
+					</div>
+				</div>
+			</section>
+		</div>
 	</main>
 
 	<LibraryBottomBar
