@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import {
 		BookOpen,
+		CircleCheck,
 		Database,
 		Download,
 		ExternalLink,
@@ -34,6 +35,7 @@
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
 	import { Button } from '$lib/components/ui/button';
+	import { Spinner } from '$lib/components/ui/spinner';
 	import * as Sheet from '$lib/components/ui/sheet';
 	import { getAllAnnotations, getAllBooks } from '$lib/db';
 	import {
@@ -77,6 +79,7 @@
 	let conflictStrategy = $state<BackupConflictStrategy>('keep-existing');
 	let importing = $state(false);
 	let importStatus = $state('');
+	let importStatusKind = $state<'idle' | 'loading' | 'success' | 'error'>('idle');
 	let backupInput = $state<HTMLInputElement>();
 
 	onMount(async () => {
@@ -174,6 +177,7 @@
 		selectedBackupName = file?.name ?? '';
 		conflictStrategy = 'keep-existing';
 		legacyPlaintextBackup = false;
+		importStatusKind = 'idle';
 		if (!file) return;
 		await validateSelectedBackup();
 	}
@@ -182,6 +186,7 @@
 		const file = selectedBackupFile;
 		if (!file) return;
 		importStatus = `Validating ${file.name}…`;
+		importStatusKind = 'loading';
 		try {
 			const fileBytes = new Uint8Array(await file.arrayBuffer());
 			const encrypted = isEncryptedLibraryBackup(fileBytes);
@@ -197,18 +202,24 @@
 			importStatus = encrypted
 				? `Encrypted backup validated: ${preview.bookCount} ${preview.bookCount === 1 ? 'book' : 'books'} and ${preview.annotationCount} annotations.`
 				: `Warning: this legacy backup is not encrypted. It contains ${preview.bookCount} ${preview.bookCount === 1 ? 'book' : 'books'} and ${preview.annotationCount} annotations.`;
+			importStatusKind = 'idle';
 		} catch (error) {
 			importStatus = backupImportErrorMessage(error);
+			importStatusKind = 'error';
 		}
 	}
 
 	async function importBackup() {
 		if (!selectedBackup || !backupPreview) return;
+		const backupToRestore = selectedBackup;
 		importing = true;
 		importStatus = 'Restoring the validated backup…';
+		importStatusKind = 'loading';
+		selectedBackup = null;
+		backupPreview = null;
 		try {
 			const result = await restoreLibraryBackup(
-				selectedBackup,
+				backupToRestore,
 				await getAllBooks(),
 				conflictStrategy
 			);
@@ -216,12 +227,14 @@
 			applyTheme(preferences.theme);
 			annotationCount = (await getAllAnnotations()).length;
 			importStatus = `Restore complete: ${result.booksRestored} ${result.booksRestored === 1 ? 'book' : 'books'} and ${result.annotationsRestored} annotations restored.`;
-			selectedBackup = null;
 			selectedBackupFile = null;
-			backupPreview = null;
 			importPassphrase = '';
+			selectedBackupName = '';
+			legacyPlaintextBackup = false;
+			importStatusKind = 'success';
 		} catch (error) {
 			importStatus = backupImportErrorMessage(error);
+			importStatusKind = 'error';
 		} finally {
 			importing = false;
 		}
@@ -357,7 +370,7 @@
 							preferences, bookmarks, and highlights. The passphrase cannot be recovered if
 							forgotten.
 						</p>
-						<div class="mt-4 grid gap-3 sm:grid-cols-2">
+						<div class="mt-4 grid items-end gap-3 sm:grid-cols-2">
 							<label class="grid gap-1 text-sm">
 								<span>Backup passphrase</span>
 								<input
@@ -367,7 +380,6 @@
 									minlength="12"
 									bind:value={exportPassphrase}
 								/>
-								<span class="text-xs text-muted-foreground">At least 12 characters</span>
 							</label>
 							<label class="grid gap-1 text-sm">
 								<span>Confirm passphrase</span>
@@ -380,6 +392,7 @@
 								/>
 							</label>
 						</div>
+						<p class="mt-1 text-xs text-muted-foreground">At least 12 characters</p>
 						<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
 							<Button
 								onclick={exportLibrary}
@@ -478,7 +491,25 @@
 								</div>
 							</div>
 						{/if}
-						<p class="mt-3 text-xs text-muted-foreground" aria-live="polite">{importStatus}</p>
+						{#if importStatus}
+							<div
+								class="mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-xs {importStatusKind ===
+								'success'
+									? 'bg-primary/10 text-foreground'
+									: importStatusKind === 'error'
+										? 'bg-destructive/10 text-destructive'
+										: 'text-muted-foreground'}"
+								aria-live="polite"
+								aria-atomic="true"
+							>
+								{#if importStatusKind === 'loading'}
+									<Spinner class="shrink-0" aria-label="Restoring backup" />
+								{:else if importStatusKind === 'success'}
+									<CircleCheck class="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+								{/if}
+								<span>{importStatus}</span>
+							</div>
+						{/if}
 					</div>
 				</section>
 			{:else}
