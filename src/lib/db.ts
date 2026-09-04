@@ -62,10 +62,10 @@ function getDB(): Promise<IDBDatabase> {
 	});
 }
 
-let migrationDone = false;
+let migratedFactory: IDBFactory | null = null;
 
 async function migrateOldBook(): Promise<void> {
-	if (migrationDone) return;
+	if (migratedFactory === indexedDB) return;
 
 	const db = await getDB();
 	return new Promise((resolve, reject) => {
@@ -87,11 +87,10 @@ async function migrateOldBook(): Promise<void> {
 				store.put(record, record.id);
 				store.delete('current-book');
 			}
-			migrationDone = true;
+			migratedFactory = indexedDB;
 			resolve();
 		};
 		getOld.onerror = () => {
-			migrationDone = true;
 			reject(getOld.error);
 		};
 	});
