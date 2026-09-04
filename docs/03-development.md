@@ -21,6 +21,10 @@ Reader appearance parsing and publisher-sensitive chapter detection live in
 `src/lib/reader/preferences.ts`. Keep stored values versioned, bounded, and backward compatible. New
 typography overrides must remain opt-in and must not be applied to fixed or illustrated content.
 
+All IndexedDB, local-storage, backup-manifest, or encrypted-envelope changes must follow the
+[storage migration and backup compatibility policy](11-storage-and-backup-evolution.md). Include
+fixtures created at the older version and verify both successful conversion and failure recovery.
+
 ## Working safely
 
 Keep sanitization in the parse path, avoid `{@html}` with unsanitized values, revoke object URLs,

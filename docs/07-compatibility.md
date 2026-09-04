@@ -43,6 +43,10 @@ supported browser engine before deployment:
 3. **Storage & Persistence**:
    - Reload or restart browser session; confirm imported books and metadata persist.
    - Delete a book from the library; verify metadata and raw EPUB binary bytes are deleted atomically from IndexedDB.
+   - When a release changes storage, open a fixture from the oldest supported database version and
+     verify its books remain readable after the upgrade.
+   - Export an encrypted backup, restore it into an empty profile, and verify books, reading state,
+     preferences, bookmarks, and highlights. Confirm a failed restore leaves existing data unchanged.
 4. **Privacy & Security Sandbox**:
    - Inspect DevTools Network panel when opening EPUB content containing external images, styles, or frames.
    - Confirm 0 external HTTP/HTTPS network requests are initiated by the imported document.

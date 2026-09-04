@@ -55,6 +55,9 @@ metadata, EPUB bytes, and annotations commit in one IndexedDB transaction. Prefe
 validated and restored with a snapshot so an IndexedDB failure also restores their previous values.
 Validation and restoration run locally and make no network request.
 
+Schema and backup changes follow the version support, failure recovery, and deprecation rules in the
+[storage migration and backup compatibility policy](11-storage-and-backup-evolution.md).
+
 EPUB archives, markup, and styles are untrusted input. `sanitize-html` filters markup and archive
 assets become object URLs. This reduces risk but is not an antivirus guarantee. Remote resources
 embedded by publications are an area for further hardening.

@@ -5,6 +5,7 @@ import {
 	deleteAnnotation,
 	deleteBookById,
 	getAllAnnotations,
+	getAllBooks,
 	getBookAnnotations,
 	getBookById,
 	restoreBookRecords,
@@ -12,6 +13,21 @@ import {
 	saveBook,
 	updateBookProgress
 } from './db';
+
+function createLegacyDatabase(value: unknown): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const request = indexedDB.open('EpubReaderDB', 1);
+		request.onupgradeneeded = () => {
+			request.result.createObjectStore('books').put(value, 'current-book');
+			request.result.createObjectStore('bookContents');
+		};
+		request.onerror = () => reject(request.error);
+		request.onsuccess = () => {
+			request.result.close();
+			resolve();
+		};
+	});
+}
 
 function getStoredValue(storeName: string, id: string): Promise<unknown> {
 	return new Promise((resolve, reject) => {
@@ -28,6 +44,32 @@ function getStoredValue(storeName: string, id: string): Promise<unknown> {
 		};
 	});
 }
+
+describe('IndexedDB migrations', () => {
+	beforeEach(() => {
+		vi.stubGlobal('indexedDB', new IDBFactory());
+	});
+
+	it('upgrades a version 1 library and preserves its legacy book', async () => {
+		const buffer = new Uint8Array([0x50, 0x4b, 1, 2]).buffer;
+		await createLegacyDatabase({ name: 'legacy.epub', buffer });
+
+		const books = await getAllBooks();
+
+		expect(books).toHaveLength(1);
+		expect(books[0]).toMatchObject({ name: 'legacy.epub', title: 'legacy', cover: null });
+		expect(await getBookById(books[0].id)).toMatchObject({ name: 'legacy.epub', buffer });
+		expect(await getStoredValue('books', 'current-book')).toBeUndefined();
+	});
+
+	it('leaves an unrecognized legacy record intact for recovery', async () => {
+		const malformed = { name: 'legacy.epub', recoveryNote: 'missing binary data' };
+		await createLegacyDatabase(malformed);
+
+		await expect(getAllBooks()).resolves.toEqual([malformed]);
+		expect(await getStoredValue('books', 'current-book')).toEqual(malformed);
+	});
+});
 
 describe('deleteBookById', () => {
 	beforeEach(() => {
