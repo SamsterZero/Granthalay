@@ -29,6 +29,11 @@ export interface BookRecord extends BookMetadata {
 	buffer: ArrayBuffer;
 }
 
+export interface RestoredBookRecord {
+	metadata: BookMetadata;
+	buffer: ArrayBuffer;
+}
+
 function getDB(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
 		const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -188,6 +193,53 @@ export async function deleteBookById(id: string): Promise<void> {
 				const keys = (event.target as IDBRequest<IDBValidKey[]>).result;
 				for (const key of keys) annotationStore.delete(key);
 			};
+		} catch (error) {
+			setupError = error;
+			transaction.abort();
+		}
+	});
+}
+
+export async function restoreBookRecords(
+	books: RestoredBookRecord[],
+	annotations: BookAnnotation[]
+): Promise<void> {
+	if (books.length === 0) return;
+	const db = await getDB();
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction(
+			[STORE_NAME, 'bookContents', ANNOTATION_STORE_NAME],
+			'readwrite'
+		);
+		const metadataStore = transaction.objectStore(STORE_NAME);
+		const contentStore = transaction.objectStore('bookContents');
+		const annotationStore = transaction.objectStore(ANNOTATION_STORE_NAME);
+		let setupError: unknown;
+
+		transaction.oncomplete = () => resolve();
+		transaction.onerror = () => reject(transaction.error);
+		transaction.onabort = () =>
+			reject(
+				setupError ?? transaction.error ?? new DOMException('Backup restore aborted', 'AbortError')
+			);
+
+		try {
+			for (const book of books) {
+				metadataStore.put(book.metadata, book.metadata.id);
+				contentStore.put(book.buffer, book.metadata.id);
+			}
+
+			let pendingDeletes = books.length;
+			for (const book of books) {
+				const request = annotationStore.index('bookId').getAllKeys(book.metadata.id);
+				request.onsuccess = () => {
+					for (const key of request.result) annotationStore.delete(key);
+					pendingDeletes -= 1;
+					if (pendingDeletes === 0) {
+						for (const annotation of annotations) annotationStore.add(annotation);
+					}
+				};
+			}
 		} catch (error) {
 			setupError = error;
 			transaction.abort();

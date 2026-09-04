@@ -33,9 +33,15 @@ EPUB and optional cover file. It also contains reading state, preferences, bookm
 highlights. Consumers must reject unknown format versions rather than guessing their schema.
 
 The archive is self-contained and can be parsed without Granthalay or a network connection. Keep it
-private: it contains the full text of imported books and may reveal reading activity. Granthalay
-currently exports and validates this restorable artifact; an in-app restore control is not yet
-available.
+private: it contains the full text of imported books and may reveal reading activity.
+
+Restore validates the exact format version and schema; bounded metadata, archive paths, unique book
+and annotation IDs, annotation relationships, referenced files, EPUB signatures, and entry sizes are
+checked before the preview is shown. Unknown fields and versions are rejected. Existing book IDs are
+listed as conflicts and are kept by default unless replacement is explicitly selected. Selected book
+metadata, EPUB bytes, and annotations commit in one IndexedDB transaction. Preference values are
+validated and restored with a snapshot so an IndexedDB failure also restores their previous values.
+Validation and restoration run locally and make no network request.
 
 EPUB archives, markup, and styles are untrusted input. `sanitize-html` filters markup and archive
 assets become object URLs. This reduces risk but is not an antivirus guarantee. Remote resources

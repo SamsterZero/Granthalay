@@ -2,19 +2,34 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { BookOpen, Database, Download, ExternalLink, Menu, ShieldCheck } from 'lucide-svelte';
+	import {
+		BookOpen,
+		Database,
+		Download,
+		ExternalLink,
+		Menu,
+		ShieldCheck,
+		Upload
+	} from 'lucide-svelte';
 	import {
 		backupErrorMessage,
 		backupFilename,
+		backupImportErrorMessage,
 		collectLocalBackupSource,
 		createLibraryBackup,
-		formatBytes
+		formatBytes,
+		parseLibraryBackup,
+		previewLibraryBackup,
+		restoreLibraryBackup,
+		type BackupConflictStrategy,
+		type BackupPreview,
+		type ParsedBackup
 	} from '$lib/backup';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import * as Sheet from '$lib/components/ui/sheet';
-	import { getAllAnnotations } from '$lib/db';
+	import { getAllAnnotations, getAllBooks } from '$lib/db';
 	import {
 		DEFAULT_READER_PREFERENCES,
 		loadGlobalReaderPreferences,
@@ -45,6 +60,13 @@
 	let menuOpen = $state(false);
 	let exporting = $state(false);
 	let exportStatus = $state('');
+	let selectedBackup = $state<ParsedBackup | null>(null);
+	let backupPreview = $state<BackupPreview | null>(null);
+	let selectedBackupName = $state('');
+	let conflictStrategy = $state<BackupConflictStrategy>('keep-existing');
+	let importing = $state(false);
+	let importStatus = $state('');
+	let backupInput = $state<HTMLInputElement>();
 
 	onMount(async () => {
 		const requestedSection = window.location.hash.slice(1);
@@ -121,6 +143,49 @@
 			exportStatus = backupErrorMessage(error);
 		} finally {
 			exporting = false;
+		}
+	}
+
+	async function inspectBackup(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		selectedBackup = null;
+		backupPreview = null;
+		selectedBackupName = file?.name ?? '';
+		conflictStrategy = 'keep-existing';
+		if (!file) return;
+		importStatus = `Validating ${file.name}…`;
+		try {
+			const parsed = await parseLibraryBackup(await file.arrayBuffer());
+			const preview = previewLibraryBackup(parsed, await getAllBooks());
+			selectedBackup = parsed;
+			backupPreview = preview;
+			importStatus = `Backup validated: ${preview.bookCount} ${preview.bookCount === 1 ? 'book' : 'books'} and ${preview.annotationCount} annotations.`;
+		} catch (error) {
+			importStatus = backupImportErrorMessage(error);
+		}
+	}
+
+	async function importBackup() {
+		if (!selectedBackup || !backupPreview) return;
+		importing = true;
+		importStatus = 'Restoring the validated backup…';
+		try {
+			const result = await restoreLibraryBackup(
+				selectedBackup,
+				await getAllBooks(),
+				conflictStrategy
+			);
+			preferences = loadGlobalReaderPreferences();
+			applyTheme(preferences.theme);
+			annotationCount = (await getAllAnnotations()).length;
+			importStatus = `Restore complete: ${result.booksRestored} ${result.booksRestored === 1 ? 'book' : 'books'} and ${result.annotationsRestored} annotations restored.`;
+			selectedBackup = null;
+			backupPreview = null;
+		} catch (error) {
+			importStatus = backupImportErrorMessage(error);
+		} finally {
+			importing = false;
 		}
 	}
 </script>
@@ -257,7 +322,11 @@
 									device.
 								</p>
 							</div>
-							<Button onclick={exportLibrary} disabled={exporting} class="sm:shrink-0">
+							<Button
+								onclick={exportLibrary}
+								disabled={exporting}
+								class="w-full sm:w-auto sm:shrink-0"
+							>
 								<Download aria-hidden="true" />
 								{exporting ? 'Preparing…' : 'Export backup'}
 							</Button>
@@ -265,11 +334,74 @@
 						<p class="mt-3 text-xs text-muted-foreground" aria-live="polite">{exportStatus}</p>
 					</div>
 					<div class="mt-3 rounded-lg border border-border p-4">
-						<h3 class="text-sm font-semibold">Restore a backup</h3>
-						<p class="mt-1 text-xs text-muted-foreground">
-							In-app restore is not available yet. Keep the exported archive safe for a future
-							restore release.
-						</p>
+						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<h3 class="text-sm font-semibold">Restore a backup</h3>
+								<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+									Choose an exported Granthalay archive. It is validated locally before any data is
+									changed.
+								</p>
+							</div>
+							<input
+								type="file"
+								class="sr-only"
+								accept=".zip,.granthalay.zip,application/zip"
+								onchange={inspectBackup}
+								bind:this={backupInput}
+							/>
+							<Button
+								variant="outline"
+								class="w-full sm:w-auto sm:shrink-0"
+								onclick={() => backupInput?.click()}
+							>
+								<Upload class="h-4 w-4" aria-hidden="true" />
+								Choose backup
+							</Button>
+						</div>
+
+						{#if backupPreview && selectedBackup}
+							<div
+								class="mt-4 rounded-md bg-muted/50 p-3"
+								aria-labelledby="restore-preview-heading"
+							>
+								<h4 id="restore-preview-heading" class="text-sm font-semibold">Restore preview</h4>
+								<p class="mt-1 text-xs break-all text-muted-foreground">{selectedBackupName}</p>
+								<ul class="mt-2 list-inside list-disc text-sm">
+									<li>{backupPreview.newBooks.length} new books</li>
+									<li>{backupPreview.conflicts.length} books already in this library</li>
+									<li>{backupPreview.annotationCount} bookmarks and highlights</li>
+									<li>Reader defaults and library preferences will be replaced</li>
+								</ul>
+								{#if backupPreview.conflicts.length > 0}
+									<p class="mt-3 text-sm font-medium">Conflicting books</p>
+									<ul class="mt-1 list-inside list-disc text-xs text-muted-foreground">
+										{#each backupPreview.conflicts.slice(0, 5) as book (book.id)}
+											<li>{book.title}</li>
+										{/each}
+										{#if backupPreview.conflicts.length > 5}
+											<li>And {backupPreview.conflicts.length - 5} more</li>
+										{/if}
+									</ul>
+									<fieldset class="mt-3 grid gap-2 text-sm">
+										<legend class="font-medium">For existing books</legend>
+										<label class="flex items-start gap-2">
+											<input type="radio" bind:group={conflictStrategy} value="keep-existing" />
+											<span>Keep existing books and skip their backup copies</span>
+										</label>
+										<label class="flex items-start gap-2">
+											<input type="radio" bind:group={conflictStrategy} value="replace-existing" />
+											<span>Replace existing books, progress, preferences, and annotations</span>
+										</label>
+									</fieldset>
+								{/if}
+								<div class="mt-4 flex justify-end">
+									<Button class="w-full sm:w-auto" onclick={importBackup} disabled={importing}>
+										{importing ? 'Restoring…' : 'Restore backup'}
+									</Button>
+								</div>
+							</div>
+						{/if}
+						<p class="mt-3 text-xs text-muted-foreground" aria-live="polite">{importStatus}</p>
 					</div>
 				</section>
 			{:else}

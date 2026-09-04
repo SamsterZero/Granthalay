@@ -25,6 +25,8 @@ Notable changes to Granthalay will be recorded here. The project follows
 - Export versioned, offline library backups containing imported EPUBs, metadata, reading progress,
   preferences, bookmarks, and highlights
   ([issue #12](https://github.com/SamsterZero/Granthalay/issues/12)).
+- Validate, preview conflicts, and transactionally restore supported local library backups
+  ([issue #13](https://github.com/SamsterZero/Granthalay/issues/13)).
 - Add checked-in guidance for stacked branches and dependent pull requests
   ([PR #65](https://github.com/SamsterZero/Granthalay/pull/65)).
 

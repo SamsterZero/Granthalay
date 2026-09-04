@@ -55,7 +55,7 @@ supported browser engine before deployment:
   vertical writing, fixed-layout metadata, and complex CSS may not render correctly.
 - Layout mode is inferred from logical chapter count and can classify some books incorrectly.
 - Page counts are viewport-dependent estimates and may change after layout.
-- Search, bookmarks, annotations, font controls, sync, catalogs, export, and PDF are absent.
+- Search, sync, catalogs, and PDF support are absent.
 - Duplicate imports are not detected.
 - The PWA supports root hosting and the official `/Granthalay/` GitHub Pages deployment.
 
