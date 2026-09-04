@@ -309,9 +309,33 @@ export async function restoreLibraryBackup(
 		(book) => strategy === 'replace-existing' || !existingIds.has(book.id)
 	);
 	const selectedIds = new Set(selectedBooks.map((book) => book.id));
-	const annotations = backup.manifest.annotations.filter((annotation) =>
-		selectedIds.has(annotation.bookId)
-	);
+	const annotations = backup.manifest.annotations
+		.filter((annotation) => selectedIds.has(annotation.bookId))
+		.map((annotation) => ({
+			formatVersion: annotation.formatVersion,
+			id: annotation.id,
+			bookId: annotation.bookId,
+			kind: annotation.kind,
+			location: {
+				href: annotation.location.href,
+				progression: annotation.location.progression
+			},
+			...(annotation.selector
+				? {
+						selector: {
+							exact: annotation.selector.exact,
+							...(annotation.selector.prefix !== undefined
+								? { prefix: annotation.selector.prefix }
+								: {}),
+							...(annotation.selector.suffix !== undefined
+								? { suffix: annotation.selector.suffix }
+								: {})
+						}
+					}
+				: {}),
+			createdAt: annotation.createdAt,
+			updatedAt: annotation.updatedAt
+		}));
 	const records = selectedBooks.map((book) => {
 		const bytes = backup.bookContents.get(book.id);
 		if (!bytes) throw new Error(`EPUB data is missing for “${book.title}”.`);

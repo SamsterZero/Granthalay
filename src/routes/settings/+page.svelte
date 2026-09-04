@@ -70,9 +70,9 @@
 	let exportStatus = $state('');
 	let exportPassphrase = $state('');
 	let exportPassphraseConfirmation = $state('');
-	let selectedBackup = $state<ParsedBackup | null>(null);
+	let selectedBackup = $state.raw<ParsedBackup | null>(null);
 	let selectedBackupFile = $state<File | null>(null);
-	let backupPreview = $state<BackupPreview | null>(null);
+	let backupPreview = $state.raw<BackupPreview | null>(null);
 	let selectedBackupName = $state('');
 	let importPassphrase = $state('');
 	let legacyPlaintextBackup = $state(false);
