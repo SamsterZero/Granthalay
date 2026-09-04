@@ -7,6 +7,7 @@ import {
 	getAllAnnotations,
 	getBookAnnotations,
 	getBookById,
+	restoreBookRecords,
 	saveAnnotation,
 	saveBook,
 	updateBookProgress
@@ -175,5 +176,82 @@ describe('updateBookProgress', () => {
 			totalBookPages: 20,
 			semanticProgression: 0.5
 		});
+	});
+});
+
+describe('restoreBookRecords', () => {
+	beforeEach(() => {
+		vi.stubGlobal('indexedDB', new IDBFactory());
+	});
+
+	it('restores books and annotations in one transaction', async () => {
+		await restoreBookRecords(
+			[
+				{
+					metadata: {
+						id: 'restored-book',
+						name: 'restored.epub',
+						title: 'Restored Book',
+						cover: null,
+						createdAt: 1,
+						progress: 0.5
+					},
+					buffer: new Uint8Array([0x50, 0x4b]).buffer
+				}
+			],
+			[
+				{
+					formatVersion: 1,
+					id: 'restored-annotation',
+					bookId: 'restored-book',
+					kind: 'bookmark',
+					location: { href: 'chapter.xhtml', progression: 0.5 },
+					createdAt: 1,
+					updatedAt: 1
+				}
+			]
+		);
+
+		expect(await getBookById('restored-book')).toMatchObject({
+			title: 'Restored Book',
+			progress: 0.5
+		});
+		expect(await getBookAnnotations('restored-book')).toHaveLength(1);
+	});
+
+	it('rolls back every store when restoration setup fails', async () => {
+		const originalPut = IDBObjectStore.prototype.put;
+		const putSpy = vi.spyOn(IDBObjectStore.prototype, 'put').mockImplementation(function (
+			this: IDBObjectStore,
+			value: unknown,
+			key?: IDBValidKey
+		) {
+			if (this.name === 'bookContents') {
+				throw new DOMException('Simulated restore failure', 'InvalidStateError');
+			}
+			return originalPut.call(this, value, key);
+		});
+
+		await expect(
+			restoreBookRecords(
+				[
+					{
+						metadata: {
+							id: 'rolled-back',
+							name: 'book.epub',
+							title: 'Rolled Back',
+							cover: null,
+							createdAt: 1
+						},
+						buffer: new Uint8Array([0x50, 0x4b]).buffer
+					}
+				],
+				[]
+			)
+		).rejects.toThrow('Simulated restore failure');
+		putSpy.mockRestore();
+
+		expect(await getBookById('rolled-back')).toBeNull();
+		expect(await getStoredValue('bookContents', 'rolled-back')).toBeUndefined();
 	});
 });

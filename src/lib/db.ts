@@ -29,6 +29,11 @@ export interface BookRecord extends BookMetadata {
 	buffer: ArrayBuffer;
 }
 
+export interface RestoredBookRecord {
+	metadata: BookMetadata;
+	buffer: ArrayBuffer;
+}
+
 function getDB(): Promise<IDBDatabase> {
 	return new Promise((resolve, reject) => {
 		const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -188,6 +193,74 @@ export async function deleteBookById(id: string): Promise<void> {
 				const keys = (event.target as IDBRequest<IDBValidKey[]>).result;
 				for (const key of keys) annotationStore.delete(key);
 			};
+		} catch (error) {
+			setupError = error;
+			transaction.abort();
+		}
+	});
+}
+
+export async function restoreBookRecords(
+	books: RestoredBookRecord[],
+	annotations: BookAnnotation[]
+): Promise<void> {
+	if (books.length === 0) return;
+	const db = await getDB();
+	return new Promise((resolve, reject) => {
+		const transaction = db.transaction(
+			[STORE_NAME, 'bookContents', ANNOTATION_STORE_NAME],
+			'readwrite'
+		);
+		const metadataStore = transaction.objectStore(STORE_NAME);
+		const contentStore = transaction.objectStore('bookContents');
+		const annotationStore = transaction.objectStore(ANNOTATION_STORE_NAME);
+		let setupError: unknown;
+		let requestError: DOMException | null = null;
+		const rememberRequestError = (request: IDBRequest) => {
+			request.addEventListener('error', () => {
+				requestError ??= request.error;
+			});
+			return request;
+		};
+
+		transaction.oncomplete = () => resolve();
+		transaction.onerror = () => {
+			requestError ??= transaction.error;
+		};
+		transaction.onabort = () =>
+			reject(
+				setupError ??
+					requestError ??
+					transaction.error ??
+					new DOMException('Backup restore aborted', 'AbortError')
+			);
+
+		try {
+			for (const book of books) {
+				rememberRequestError(metadataStore.put(book.metadata, book.metadata.id));
+				rememberRequestError(contentStore.put(book.buffer, book.metadata.id));
+			}
+
+			let pendingDeletes = books.length;
+			for (const book of books) {
+				const request = rememberRequestError(
+					annotationStore.index('bookId').getAllKeys(book.metadata.id)
+				) as IDBRequest<IDBValidKey[]>;
+				request.onsuccess = () => {
+					try {
+						for (const key of request.result) rememberRequestError(annotationStore.delete(key));
+						pendingDeletes -= 1;
+						if (pendingDeletes === 0) {
+							for (const annotation of annotations) {
+								rememberRequestError(annotationStore.add(annotation));
+							}
+						}
+					} catch (error) {
+						setupError = error;
+						transaction.abort();
+					}
+				};
+			}
 		} catch (error) {
 			setupError = error;
 			transaction.abort();

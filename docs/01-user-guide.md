@@ -76,9 +76,17 @@ Home Screen** menu. Availability depends on HTTPS, browser support, and the depl
 
 Keep the original EPUBs. You can also open **Settings**, find **Backup & restore**, and choose
 **Export backup** to save imported books and reading data in a self-contained, versioned archive.
-The export is created and downloaded locally, works offline, and reports its resulting size.
-Granthalay does not synchronize a library, and clearing site data still removes the browser copy.
-See [Data and privacy](05-data-and-privacy.md).
+Enter and confirm a passphrase of at least 12 characters first. The export is encrypted, created and
+downloaded locally, works offline, and reports its resulting size. Granthalay cannot recover a
+forgotten passphrase.
+
+To restore one, enter its passphrase and choose **Choose backup** in the same view. Granthalay
+decrypts and validates the archive locally, then
+previews new and conflicting books before changing the library. For conflicts, keep the existing
+copy or explicitly replace its book data, progress, preferences, and annotations. A restore either
+commits its selected books and annotations together or rolls them back. Granthalay does not
+synchronize a library, and clearing site data still removes the browser copy. See
+[Data and privacy](05-data-and-privacy.md).
 
 ## Stable reading position
 
