@@ -251,4 +251,13 @@ describe('library backup', () => {
 			preferences.readerDefaults
 		);
 	});
+
+	it('explains IndexedDB restore failures without exposing the generic browser message', () => {
+		expect(backupImportErrorMessage(new DOMException('aborted', 'AbortError'))).toContain(
+			'no library changes were saved'
+		);
+		expect(backupImportErrorMessage(new DOMException('duplicate', 'ConstraintError'))).toContain(
+			'conflicts with an existing library record'
+		);
+	});
 });

@@ -436,6 +436,12 @@ export function backupImportErrorMessage(error: unknown): string {
 	if (error instanceof DOMException && error.name === 'QuotaExceededError') {
 		return 'The backup could not be restored because browser storage is full.';
 	}
+	if (error instanceof DOMException && error.name === 'AbortError') {
+		return 'The backup restore was interrupted and no library changes were saved. Check available browser storage and try again.';
+	}
+	if (error instanceof DOMException && error.name === 'ConstraintError') {
+		return 'The backup conflicts with an existing library record and no changes were saved.';
+	}
 	if (error instanceof RangeError) return 'The backup is too large to process in available memory.';
 	return error instanceof Error ? error.message : 'The backup could not be restored.';
 }

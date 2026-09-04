@@ -215,28 +215,49 @@ export async function restoreBookRecords(
 		const contentStore = transaction.objectStore('bookContents');
 		const annotationStore = transaction.objectStore(ANNOTATION_STORE_NAME);
 		let setupError: unknown;
+		let requestError: DOMException | null = null;
+		const rememberRequestError = (request: IDBRequest) => {
+			request.addEventListener('error', () => {
+				requestError ??= request.error;
+			});
+			return request;
+		};
 
 		transaction.oncomplete = () => resolve();
-		transaction.onerror = () => reject(transaction.error);
+		transaction.onerror = () => {
+			requestError ??= transaction.error;
+		};
 		transaction.onabort = () =>
 			reject(
-				setupError ?? transaction.error ?? new DOMException('Backup restore aborted', 'AbortError')
+				setupError ??
+					requestError ??
+					transaction.error ??
+					new DOMException('Backup restore aborted', 'AbortError')
 			);
 
 		try {
 			for (const book of books) {
-				metadataStore.put(book.metadata, book.metadata.id);
-				contentStore.put(book.buffer, book.metadata.id);
+				rememberRequestError(metadataStore.put(book.metadata, book.metadata.id));
+				rememberRequestError(contentStore.put(book.buffer, book.metadata.id));
 			}
 
 			let pendingDeletes = books.length;
 			for (const book of books) {
-				const request = annotationStore.index('bookId').getAllKeys(book.metadata.id);
+				const request = rememberRequestError(
+					annotationStore.index('bookId').getAllKeys(book.metadata.id)
+				) as IDBRequest<IDBValidKey[]>;
 				request.onsuccess = () => {
-					for (const key of request.result) annotationStore.delete(key);
-					pendingDeletes -= 1;
-					if (pendingDeletes === 0) {
-						for (const annotation of annotations) annotationStore.add(annotation);
+					try {
+						for (const key of request.result) rememberRequestError(annotationStore.delete(key));
+						pendingDeletes -= 1;
+						if (pendingDeletes === 0) {
+							for (const annotation of annotations) {
+								rememberRequestError(annotationStore.add(annotation));
+							}
+						}
+					} catch (error) {
+						setupError = error;
+						transaction.abort();
 					}
 				};
 			}
