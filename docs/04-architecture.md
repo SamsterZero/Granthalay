@@ -51,6 +51,11 @@ passphrase-derived AES-256-GCM key encrypts the ZIP; the envelope header is auth
 data. Decryption completes before ZIP parsing, so incorrect passphrases and modified envelopes never
 reach the restore preview or database boundary.
 
+Storage health uses capability-detected StorageManager estimates and Cache Storage inspection. The
+service worker separates the versioned offline application shell from runtime responses so Settings
+can clear temporary cache entries without deleting offline-critical assets. Multi-book deletion uses
+one IndexedDB transaction across metadata, EPUB content, and annotations.
+
 The engine follows `META-INF/container.xml` to the package document, maps manifest and spine,
 loads EPUB 3 navigation or EPUB 2 NCX labels, extracts/scopes CSS, and converts archive resource
 references to object URLs. HTML is sanitized before Svelte renders it.

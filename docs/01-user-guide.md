@@ -88,6 +88,11 @@ commits its selected books and annotations together or rolls them back. Granthal
 synchronize a library, and clearing site data still removes the browser copy. See
 [Data and privacy](05-data-and-privacy.md).
 
+Open **Settings → Storage & privacy** to inspect the browser's estimated usage and quota. Availability
+depends on browser support. **Clear temporary cache** removes runtime responses without deleting
+imported books or the offline app shell. To reclaim book storage, select specific books and confirm
+permanent deletion; their EPUB data, progress, bookmarks, and highlights are removed together.
+
 ## Stable reading position
 
 Granthalay stores reading progress on your device. When the reader is resized, rotated, or

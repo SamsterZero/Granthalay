@@ -24,7 +24,8 @@
 
 <section
 	id={mode === 'all' ? 'reader-appearance' : undefined}
-	class="z-40 grid gap-4 bg-background p-4 sm:grid-cols-2 lg:grid-cols-5"
+	class="z-40 grid gap-4 bg-background px-4 pb-4 sm:grid-cols-2 lg:grid-cols-5"
+	class:pt-4={!embedded}
 	class:border-b={!embedded}
 	class:border-border={!embedded}
 	class:shadow-sm={!embedded}

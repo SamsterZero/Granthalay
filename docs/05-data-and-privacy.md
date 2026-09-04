@@ -14,7 +14,8 @@ IndexedDB database `EpubReaderDB`, currently version 4:
 | `annotations`  | UUID      | Book ID, kind, semantic location, and optional selected-text quote |
 
 `localStorage` holds `theme`, `library-grid-mode`, and bundled-book progress under
-`book-progress-default`. Cache Storage holds application assets and successful GET responses.
+`book-progress-default`. Cache Storage separates versioned offline application assets from successful
+runtime GET responses.
 Older `current-book` data is migrated lazily to a UUID record.
 
 Import creates a new UUID; duplicate imports are allowed. Bookmarks and highlight records remain on
@@ -23,6 +24,12 @@ metadata, original EPUB bytes, and annotations in one transaction. Clearing site
 library, annotations, preferences, and caches. Use **Settings → Backup & restore → Export backup**
 to download a local backup. Export runs in the browser and makes no network request. There is no
 automatic sync.
+
+Settings reports browser-provided site-wide usage and quota estimates when available. These totals can
+include IndexedDB, local storage, and caches; browsers may round, omit, or deny them. Granthalay does
+not transmit storage measurements. Runtime cache cleanup does not touch books, reading data,
+preferences, or the offline application shell. Selected-book deletion permanently removes the chosen
+metadata, EPUB bytes, and annotations in one transaction.
 
 ## Backup format
 

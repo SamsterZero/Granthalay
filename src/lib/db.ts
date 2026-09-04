@@ -169,6 +169,11 @@ export async function getBookById(id: string): Promise<BookRecord | null> {
 }
 
 export async function deleteBookById(id: string): Promise<void> {
+	return deleteBooksByIds([id]);
+}
+
+export async function deleteBooksByIds(ids: string[]): Promise<void> {
+	if (ids.length === 0) return;
 	const db = await getDB();
 	return new Promise((resolve, reject) => {
 		const transaction = db.transaction(
@@ -185,13 +190,17 @@ export async function deleteBookById(id: string): Promise<void> {
 			);
 
 		try {
-			transaction.objectStore(STORE_NAME).delete(id);
-			transaction.objectStore('bookContents').delete(id);
+			const metadataStore = transaction.objectStore(STORE_NAME);
+			const contentStore = transaction.objectStore('bookContents');
 			const annotationStore = transaction.objectStore(ANNOTATION_STORE_NAME);
-			annotationStore.index('bookId').getAllKeys(id).onsuccess = (event) => {
-				const keys = (event.target as IDBRequest<IDBValidKey[]>).result;
-				for (const key of keys) annotationStore.delete(key);
-			};
+			for (const id of ids) {
+				metadataStore.delete(id);
+				contentStore.delete(id);
+				annotationStore.index('bookId').getAllKeys(id).onsuccess = (event) => {
+					const keys = (event.target as IDBRequest<IDBValidKey[]>).result;
+					for (const key of keys) annotationStore.delete(key);
+				};
+			}
 		} catch (error) {
 			setupError = error;
 			transaction.abort();

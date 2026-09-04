@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	deleteAnnotation,
 	deleteBookById,
+	deleteBooksByIds,
 	getAllAnnotations,
 	getAllBooks,
 	getBookAnnotations,
@@ -111,6 +112,28 @@ describe('deleteBookById', () => {
 
 		expect(await getBookById(id)).toMatchObject({ id, name: 'book.epub', title: 'Book' });
 		expect(await getStoredValue('bookContents', id)).toEqual(buffer);
+	});
+
+	it('deletes multiple selected books and their annotations atomically', async () => {
+		const first = await saveBook(new ArrayBuffer(2), 'first.epub', 'First', null);
+		const second = await saveBook(new ArrayBuffer(2), 'second.epub', 'Second', null);
+		await saveAnnotation({
+			bookId: first,
+			kind: 'bookmark',
+			location: { href: 'one.xhtml', progression: 0.1 }
+		});
+		await saveAnnotation({
+			bookId: second,
+			kind: 'bookmark',
+			location: { href: 'two.xhtml', progression: 0.2 }
+		});
+
+		await deleteBooksByIds([first, second]);
+
+		expect(await getBookById(first)).toBeNull();
+		expect(await getBookById(second)).toBeNull();
+		expect(await getBookAnnotations(first)).toEqual([]);
+		expect(await getBookAnnotations(second)).toEqual([]);
 	});
 });
 
