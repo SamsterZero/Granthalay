@@ -58,6 +58,7 @@ supported browser engine before deployment:
 - Search, sync, catalogs, and PDF support are absent.
 - Duplicate imports are not detected.
 - The PWA supports root hosting and the official `/Granthalay/` GitHub Pages deployment.
+- Encrypted backup export and restore require the browser Web Crypto API with PBKDF2 and AES-GCM.
 
 Automated regression fixtures cover representative EPUB 2 and EPUB 3 package structures, NCX and
 EPUB navigation, spine order, internal CSS, raster and SVG resources, and malformed archives. This

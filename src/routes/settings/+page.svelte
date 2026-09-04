@@ -13,7 +13,6 @@
 	} from 'lucide-svelte';
 	import {
 		backupErrorMessage,
-		backupFilename,
 		backupImportErrorMessage,
 		collectLocalBackupSource,
 		createLibraryBackup,
@@ -25,6 +24,13 @@
 		type BackupPreview,
 		type ParsedBackup
 	} from '$lib/backup';
+	import {
+		decryptLibraryBackup,
+		encryptedBackupFilename,
+		encryptLibraryBackup,
+		isEncryptedLibraryBackup,
+		validateBackupPassphrase
+	} from '$lib/backup-crypto';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -60,9 +66,14 @@
 	let menuOpen = $state(false);
 	let exporting = $state(false);
 	let exportStatus = $state('');
+	let exportPassphrase = $state('');
+	let exportPassphraseConfirmation = $state('');
 	let selectedBackup = $state<ParsedBackup | null>(null);
+	let selectedBackupFile = $state<File | null>(null);
 	let backupPreview = $state<BackupPreview | null>(null);
 	let selectedBackupName = $state('');
+	let importPassphrase = $state('');
+	let legacyPlaintextBackup = $state(false);
 	let conflictStrategy = $state<BackupConflictStrategy>('keep-existing');
 	let importing = $state(false);
 	let importStatus = $state('');
@@ -127,18 +138,25 @@
 		exporting = true;
 		exportStatus = 'Preparing your library backup…';
 		try {
+			validateBackupPassphrase(exportPassphrase);
+			if (exportPassphrase !== exportPassphraseConfirmation) {
+				throw new Error('The backup passphrases do not match.');
+			}
 			const source = await collectLocalBackupSource();
-			const bytes = await createLibraryBackup(source);
+			const zipBytes = await createLibraryBackup(source);
+			const bytes = await encryptLibraryBackup(zipBytes, exportPassphrase);
 			const archive = new ArrayBuffer(bytes.byteLength);
 			new Uint8Array(archive).set(bytes);
-			const blob = new Blob([archive], { type: 'application/zip' });
+			const blob = new Blob([archive], { type: 'application/octet-stream' });
 			const url = URL.createObjectURL(blob);
 			const anchor = document.createElement('a');
 			anchor.href = url;
-			anchor.download = backupFilename();
+			anchor.download = encryptedBackupFilename();
 			anchor.click();
 			setTimeout(() => URL.revokeObjectURL(url), 0);
 			exportStatus = `Backup ready: ${formatBytes(bytes.byteLength)} for ${source.books.length} ${source.books.length === 1 ? 'book' : 'books'}.`;
+			exportPassphrase = '';
+			exportPassphraseConfirmation = '';
 		} catch (error) {
 			exportStatus = backupErrorMessage(error);
 		} finally {
@@ -149,18 +167,36 @@
 	async function inspectBackup(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
+		selectedBackupFile = file ?? null;
+		input.value = '';
 		selectedBackup = null;
 		backupPreview = null;
 		selectedBackupName = file?.name ?? '';
 		conflictStrategy = 'keep-existing';
+		legacyPlaintextBackup = false;
+		if (!file) return;
+		await validateSelectedBackup();
+	}
+
+	async function validateSelectedBackup() {
+		const file = selectedBackupFile;
 		if (!file) return;
 		importStatus = `Validating ${file.name}…`;
 		try {
-			const parsed = await parseLibraryBackup(await file.arrayBuffer());
+			const fileBytes = new Uint8Array(await file.arrayBuffer());
+			const encrypted = isEncryptedLibraryBackup(fileBytes);
+			if (encrypted) validateBackupPassphrase(importPassphrase);
+			const backupBytes = encrypted
+				? await decryptLibraryBackup(fileBytes, importPassphrase)
+				: fileBytes;
+			const parsed = await parseLibraryBackup(backupBytes);
 			const preview = previewLibraryBackup(parsed, await getAllBooks());
 			selectedBackup = parsed;
 			backupPreview = preview;
-			importStatus = `Backup validated: ${preview.bookCount} ${preview.bookCount === 1 ? 'book' : 'books'} and ${preview.annotationCount} annotations.`;
+			legacyPlaintextBackup = !encrypted;
+			importStatus = encrypted
+				? `Encrypted backup validated: ${preview.bookCount} ${preview.bookCount === 1 ? 'book' : 'books'} and ${preview.annotationCount} annotations.`
+				: `Warning: this legacy backup is not encrypted. It contains ${preview.bookCount} ${preview.bookCount === 1 ? 'book' : 'books'} and ${preview.annotationCount} annotations.`;
 		} catch (error) {
 			importStatus = backupImportErrorMessage(error);
 		}
@@ -181,7 +217,9 @@
 			annotationCount = (await getAllAnnotations()).length;
 			importStatus = `Restore complete: ${result.booksRestored} ${result.booksRestored === 1 ? 'book' : 'books'} and ${result.annotationsRestored} annotations restored.`;
 			selectedBackup = null;
+			selectedBackupFile = null;
 			backupPreview = null;
+			importPassphrase = '';
 		} catch (error) {
 			importStatus = backupImportErrorMessage(error);
 		} finally {
@@ -313,15 +351,36 @@
 						Keep an independent copy of your local library and reading data.
 					</p>
 					<div class="mt-4 rounded-lg border border-border p-4">
-						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-							<div>
-								<h3 class="text-sm font-semibold">Library backup</h3>
-								<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
-									Download a versioned archive of your imported EPUBs, book details, reading
-									progress, preferences, bookmarks, and highlights. It is created entirely on this
-									device.
-								</p>
-							</div>
+						<h3 class="text-sm font-semibold">Library backup</h3>
+						<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+							Download an encrypted archive of your imported EPUBs, book details, reading progress,
+							preferences, bookmarks, and highlights. The passphrase cannot be recovered if
+							forgotten.
+						</p>
+						<div class="mt-4 grid gap-3 sm:grid-cols-2">
+							<label class="grid gap-1 text-sm">
+								<span>Backup passphrase</span>
+								<input
+									type="password"
+									class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									autocomplete="new-password"
+									minlength="12"
+									bind:value={exportPassphrase}
+								/>
+								<span class="text-xs text-muted-foreground">At least 12 characters</span>
+							</label>
+							<label class="grid gap-1 text-sm">
+								<span>Confirm passphrase</span>
+								<input
+									type="password"
+									class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									autocomplete="new-password"
+									minlength="12"
+									bind:value={exportPassphraseConfirmation}
+								/>
+							</label>
+						</div>
+						<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
 							<Button
 								onclick={exportLibrary}
 								disabled={exporting}
@@ -334,18 +393,25 @@
 						<p class="mt-3 text-xs text-muted-foreground" aria-live="polite">{exportStatus}</p>
 					</div>
 					<div class="mt-3 rounded-lg border border-border p-4">
-						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-							<div>
-								<h3 class="text-sm font-semibold">Restore a backup</h3>
-								<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
-									Choose an exported Granthalay archive. It is validated locally before any data is
-									changed.
-								</p>
-							</div>
+						<h3 class="text-sm font-semibold">Restore a backup</h3>
+						<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+							Enter the archive passphrase, then choose an exported Granthalay backup. Legacy
+							plaintext ZIP backups remain supported with a warning.
+						</p>
+						<label class="mt-4 grid max-w-md gap-1 text-sm">
+							<span>Backup passphrase</span>
+							<input
+								type="password"
+								class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								autocomplete="current-password"
+								bind:value={importPassphrase}
+							/>
+						</label>
+						<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
 							<input
 								type="file"
 								class="sr-only"
-								accept=".zip,.granthalay.zip,application/zip"
+								accept=".granthalay,.zip,.granthalay.zip,application/zip,application/octet-stream"
 								onchange={inspectBackup}
 								bind:this={backupInput}
 							/>
@@ -357,6 +423,11 @@
 								<Upload class="h-4 w-4" aria-hidden="true" />
 								Choose backup
 							</Button>
+							{#if selectedBackupFile && !selectedBackup}
+								<Button class="w-full sm:w-auto" onclick={validateSelectedBackup}>
+									Unlock & validate
+								</Button>
+							{/if}
 						</div>
 
 						{#if backupPreview && selectedBackup}
@@ -365,6 +436,12 @@
 								aria-labelledby="restore-preview-heading"
 							>
 								<h4 id="restore-preview-heading" class="text-sm font-semibold">Restore preview</h4>
+								{#if legacyPlaintextBackup}
+									<p class="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+										This legacy backup is not encrypted. Store it securely and replace it with a new
+										encrypted export.
+									</p>
+								{/if}
 								<p class="mt-1 text-xs break-all text-muted-foreground">{selectedBackupName}</p>
 								<ul class="mt-2 list-inside list-disc text-sm">
 									<li>{backupPreview.newBooks.length} new books</li>

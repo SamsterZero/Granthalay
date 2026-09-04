@@ -13,6 +13,17 @@ Confirm its name ends in `.epub` and it is a valid, non-DRM EPUB. Try a known-go
 book. Browser developer tools may show ZIP, container, OPF, or parsing errors. Share a minimal legal
 fixture, not the full copyrighted book.
 
+## A backup will not decrypt or restore
+
+Confirm that the passphrase matches the one used during export, including capitalization and spaces.
+Granthalay cannot recover a forgotten passphrase. An incorrect passphrase and any modification to an
+encrypted archive intentionally produce the same failure message so the app does not reveal which
+part of the protected data was valid.
+
+Legacy `.granthalay.zip` files do not use a passphrase and display a plaintext privacy warning. For a
+validated backup that cannot fit in browser storage, remove unneeded local books or free browser
+storage before retrying; restoration rolls back instead of leaving a partial library.
+
 ## Images or layout look wrong
 
 Complex publisher CSS, fixed layouts, encrypted fonts, and unsupported features can differ. See

@@ -30,9 +30,9 @@ Granthalay is under active development. EPUB rendering can vary between publishe
 
 Imported books are processed entirely in the browser and are not uploaded by Granthalay. Browser
 storage is origin-specific: clearing site data, changing the deployment URL, or using a different
-browser/profile produces a different library. Settings can export and restore a versioned local
-library archive without uploading its contents. Keep the original EPUB files and backup archives
-private.
+browser/profile produces a different library. Settings can export and restore a passphrase-encrypted,
+versioned local library archive without uploading its contents. Keep the original EPUB files,
+backup archives, and passphrases private.
 
 The roadmap adds an optional bookstore without changing the reader's static-PWA foundation. The
 PWA remains deployable to GitHub Pages; a separately hosted modular backend provides accounts,

@@ -46,6 +46,10 @@ Library restore treats archive contents as untrusted. It validates the versioned
 bounded fields and payloads, EPUB signatures, and book/annotation relationships before presenting a
 conflict preview. Selected metadata, EPUB bytes, and annotations share one read-write IndexedDB
 transaction; local preference values are snapshotted and reverted if that transaction aborts.
+New exports wrap the entire ZIP payload in a versioned authenticated-encryption envelope. A
+passphrase-derived AES-256-GCM key encrypts the ZIP; the envelope header is authenticated as additional
+data. Decryption completes before ZIP parsing, so incorrect passphrases and modified envelopes never
+reach the restore preview or database boundary.
 
 The engine follows `META-INF/container.xml` to the package document, maps manifest and spine,
 loads EPUB 3 navigation or EPUB 2 NCX labels, extracts/scopes CSS, and converts archive resource
