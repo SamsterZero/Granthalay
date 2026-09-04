@@ -33,6 +33,8 @@ Notable changes to Granthalay will be recorded here. The project follows
 - Define version support, testing, recovery, and deprecation rules for IndexedDB migrations and
   portable backups, with legacy-upgrade regression coverage
   ([issue #14](https://github.com/SamsterZero/Granthalay/issues/14)).
+- Add capability-aware storage health, isolated runtime-cache cleanup, and atomic selected-book
+  recovery controls ([issue #15](https://github.com/SamsterZero/Granthalay/issues/15)).
 - Add checked-in guidance for stacked branches and dependent pull requests
   ([PR #65](https://github.com/SamsterZero/Granthalay/pull/65)).
 

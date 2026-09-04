@@ -24,6 +24,13 @@ Legacy `.granthalay.zip` files do not use a passphrase and display a plaintext p
 validated backup that cannot fit in browser storage, remove unneeded local books or free browser
 storage before retrying; restoration rolls back instead of leaving a partial library.
 
+## Storage usage is unavailable or nearly full
+
+Some browsers and private contexts do not expose usage estimates. Granthalay continues to work and
+labels the measurement unavailable. If storage is nearly full, export a backup first, clear temporary
+cache responses, or select unneeded books under **Settings → Storage & privacy**. Cache cleanup does
+not remove books; selected-book deletion is permanent and also removes progress and annotations.
+
 ## Images or layout look wrong
 
 Complex publisher CSS, fixed layouts, encrypted fonts, and unsupported features can differ. See

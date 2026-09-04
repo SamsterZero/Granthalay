@@ -3,13 +3,12 @@
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
 	import {
-		BookOpen,
 		CircleCheck,
-		Database,
 		Download,
 		ExternalLink,
 		Menu,
-		ShieldCheck,
+		RefreshCw,
+		Trash2,
 		Upload
 	} from 'lucide-svelte';
 	import {
@@ -37,13 +36,18 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import * as Sheet from '$lib/components/ui/sheet';
-	import { getAllAnnotations, getAllBooks } from '$lib/db';
+	import { deleteBooksByIds, getAllAnnotations, getAllBooks, type BookMetadata } from '$lib/db';
 	import {
 		DEFAULT_READER_PREFERENCES,
 		loadGlobalReaderPreferences,
 		READER_PREFERENCES_KEY,
 		type ReaderPreferences
 	} from '$lib/reader/preferences';
+	import {
+		clearRuntimeCaches,
+		inspectStorageHealth,
+		type StorageHealth
+	} from '$lib/storage-health';
 
 	const settingsSections = [
 		{ id: 'appearance', label: 'Appearance' },
@@ -81,6 +85,14 @@
 	let importStatus = $state('');
 	let importStatusKind = $state<'idle' | 'loading' | 'success' | 'error'>('idle');
 	let backupInput = $state<HTMLInputElement>();
+	let storageHealth = $state<StorageHealth | null>(null);
+	let storedBooks = $state<BookMetadata[]>([]);
+	let selectedBookIds = $state<string[]>([]);
+	let loadingStorage = $state(false);
+	let clearingCache = $state(false);
+	let deletingBooks = $state(false);
+	let confirmBookDeletion = $state(false);
+	let storageStatus = $state('');
 
 	onMount(async () => {
 		const requestedSection = window.location.hash.slice(1);
@@ -94,7 +106,64 @@
 		} catch {
 			annotationCount = 0;
 		}
+		await refreshStorageHealth();
 	});
+
+	async function refreshStorageHealth() {
+		loadingStorage = true;
+		try {
+			[storageHealth, storedBooks] = await Promise.all([inspectStorageHealth(), getAllBooks()]);
+			selectedBookIds = selectedBookIds.filter((id) => storedBooks.some((book) => book.id === id));
+		} catch (error) {
+			storageStatus = error instanceof Error ? error.message : 'Storage details could not be read.';
+		} finally {
+			loadingStorage = false;
+		}
+	}
+
+	function toggleSelectedBook(bookId: string) {
+		selectedBookIds = selectedBookIds.includes(bookId)
+			? selectedBookIds.filter((id) => id !== bookId)
+			: [...selectedBookIds, bookId];
+		confirmBookDeletion = false;
+	}
+
+	async function clearTemporaryCache() {
+		clearingCache = true;
+		storageStatus = 'Clearing temporary cached responses…';
+		try {
+			const count = await clearRuntimeCaches();
+			storageStatus = count
+				? 'Temporary cache cleared. Your books and offline app shell were not changed.'
+				: 'No temporary cache needed clearing. Your books were not changed.';
+			await refreshStorageHealth();
+		} catch (error) {
+			storageStatus =
+				error instanceof Error ? error.message : 'Temporary cache could not be cleared.';
+		} finally {
+			clearingCache = false;
+		}
+	}
+
+	async function deleteSelectedBooks() {
+		if (!confirmBookDeletion || selectedBookIds.length === 0) return;
+		deletingBooks = true;
+		const count = selectedBookIds.length;
+		storageStatus = `Deleting ${count} selected ${count === 1 ? 'book' : 'books'}…`;
+		try {
+			await deleteBooksByIds(selectedBookIds);
+			selectedBookIds = [];
+			confirmBookDeletion = false;
+			annotationCount = (await getAllAnnotations()).length;
+			storageStatus = `${count} ${count === 1 ? 'book was' : 'books were'} deleted with their EPUB data and annotations.`;
+			await refreshStorageHealth();
+		} catch (error) {
+			storageStatus =
+				error instanceof Error ? error.message : 'Selected books could not be deleted.';
+		} finally {
+			deletingBooks = false;
+		}
+	}
 
 	function updatePreferences(update: Partial<ReaderPreferences>) {
 		preferences = { ...preferences, ...update };
@@ -296,7 +365,7 @@
 	</header>
 
 	<main
-		class="mx-auto grid max-w-7xl gap-8 px-4 pt-6 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
+		class="mx-auto grid max-w-7xl gap-8 px-4 pt-2 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
 	>
 		<aside class="sticky top-6 hidden lg:block">
 			<nav class="grid gap-1" aria-label="Settings sections">
@@ -358,12 +427,12 @@
 					</p>
 				</section>
 			{:else if activeSection === 'backup-restore'}
-				<section id="backup-restore" class="scroll-mt-20 p-4">
+				<section id="backup-restore" class="scroll-mt-20 px-4 pb-4">
 					<h2 class="text-base font-semibold">Backup & restore</h2>
 					<p class="mt-1 text-sm text-muted-foreground">
 						Keep an independent copy of your local library and reading data.
 					</p>
-					<div class="mt-4 rounded-lg border border-border p-4">
+					<div class="mt-5">
 						<h3 class="text-sm font-semibold">Library backup</h3>
 						<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
 							Download an encrypted archive of your imported EPUBs, book details, reading progress,
@@ -405,7 +474,7 @@
 						</div>
 						<p class="mt-3 text-xs text-muted-foreground" aria-live="polite">{exportStatus}</p>
 					</div>
-					<div class="mt-3 rounded-lg border border-border p-4">
+					<div class="mt-7">
 						<h3 class="text-sm font-semibold">Restore a backup</h3>
 						<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
 							Enter the archive passphrase, then choose an exported Granthalay backup. Legacy
@@ -513,28 +582,125 @@
 					</div>
 				</section>
 			{:else}
-				<section id="storage-privacy" class="scroll-mt-20 p-4">
+				<section id="storage-privacy" class="scroll-mt-20 px-4 pb-4">
 					<h2 class="text-base font-semibold">Storage & privacy</h2>
 					<p class="mt-1 text-sm text-muted-foreground">
-						Understand where Granthalay keeps your books and reading activity.
+						Check available space or safely free storage on this device.
 					</p>
-					<div class="mt-4 grid gap-5 sm:grid-cols-3">
-						<div>
-							<BookOpen class="h-5 w-5 text-primary" aria-hidden="true" />
-							<h3 class="mt-2 text-sm font-semibold">Per-book</h3>
-							<p class="mt-1 text-xs text-muted-foreground">Reader changes stay with that book.</p>
+					<div class="mt-5">
+						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+							<div>
+								<h3 class="text-sm font-semibold">Storage health</h3>
+								<p class="mt-1 text-xs text-muted-foreground">
+									Includes books, preferences, and cached data for this site.
+								</p>
+							</div>
+							<Button variant="outline" onclick={refreshStorageHealth} disabled={loadingStorage}>
+								<RefreshCw class={loadingStorage ? 'animate-spin' : ''} aria-hidden="true" />
+								Refresh
+							</Button>
 						</div>
-						<div>
-							<Database class="h-5 w-5 text-primary" aria-hidden="true" />
-							<h3 class="mt-2 text-sm font-semibold">On device</h3>
-							<p class="mt-1 text-xs text-muted-foreground">Preferences work offline here.</p>
+						{#if storageHealth && storageHealth.usage !== null && storageHealth.quota !== null}
+							<div class="mt-4">
+								<div class="flex justify-between gap-4 text-sm">
+									<span>{formatBytes(storageHealth.usage)} used</span>
+									<span class="text-muted-foreground">{formatBytes(storageHealth.quota)} quota</span
+									>
+								</div>
+								<div class="mt-2 h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+									<div
+										class="h-full rounded-full bg-primary"
+										style:width={`${Math.min(100, (storageHealth.usageRatio ?? 0) * 100)}%`}
+									></div>
+								</div>
+							</div>
+						{:else}
+							<p class="mt-4 text-sm text-muted-foreground">
+								This browser does not provide a storage usage estimate in the current context.
+							</p>
+						{/if}
+						<p class="mt-3 text-xs text-muted-foreground">
+							Cache:
+							{storageHealth?.cacheBytes === null || storageHealth?.cacheBytes === undefined
+								? 'unavailable'
+								: formatBytes(storageHealth.cacheBytes)}
+							· Storage protection:
+							{storageHealth?.persisted === true
+								? 'granted'
+								: storageHealth?.persisted === false
+									? 'not granted'
+									: 'unavailable'}
+						</p>
+						<div class="mt-3 flex justify-end">
+							<Button variant="outline" onclick={clearTemporaryCache} disabled={clearingCache}>
+								<Trash2 aria-hidden="true" />
+								{clearingCache ? 'Clearing…' : 'Clear temporary cache'}
+							</Button>
 						</div>
-						<div>
-							<ShieldCheck class="h-5 w-5 text-primary" aria-hidden="true" />
-							<h3 class="mt-2 text-sm font-semibold">Private</h3>
-							<p class="mt-1 text-xs text-muted-foreground">Nothing is sent to a backend.</p>
-						</div>
+						<p class="mt-2 text-xs text-muted-foreground">
+							Does not delete books or offline access.
+						</p>
 					</div>
+
+					<details class="mt-7">
+						<summary class="cursor-pointer text-sm font-semibold">
+							Remove imported books ({storedBooks.length})
+						</summary>
+						{#if storedBooks.length > 0}
+							<p class="mt-2 text-xs text-muted-foreground">
+								Permanently deletes each selected EPUB and its reading data. Export a backup first.
+							</p>
+							<fieldset class="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1">
+								<legend class="sr-only">Select books to delete</legend>
+								{#each storedBooks as book (book.id)}
+									<label class="flex items-start gap-3 rounded-md bg-muted/50 p-3 text-sm">
+										<input
+											type="checkbox"
+											class="mt-0.5"
+											checked={selectedBookIds.includes(book.id)}
+											onchange={() => toggleSelectedBook(book.id)}
+										/>
+										<span>
+											<span class="block font-medium">{book.title}</span>
+											<span class="block text-xs text-muted-foreground">{book.name}</span>
+										</span>
+									</label>
+								{/each}
+							</fieldset>
+							<div class="mt-4 flex flex-col items-end gap-2">
+								{#if confirmBookDeletion}
+									<p class="text-sm text-destructive" role="alert">
+										This cannot be undone. Export a backup first if you may need these books later.
+									</p>
+								{/if}
+								<div class="flex flex-col gap-2 sm:flex-row">
+									{#if confirmBookDeletion}
+										<Button variant="outline" onclick={() => (confirmBookDeletion = false)}
+											>Cancel</Button
+										>
+									{/if}
+									<Button
+										variant="destructive"
+										disabled={selectedBookIds.length === 0 || deletingBooks}
+										onclick={() =>
+											confirmBookDeletion ? deleteSelectedBooks() : (confirmBookDeletion = true)}
+									>
+										<Trash2 aria-hidden="true" />
+										{deletingBooks
+											? 'Deleting…'
+											: confirmBookDeletion
+												? `Delete ${selectedBookIds.length} permanently`
+												: `Delete selected (${selectedBookIds.length})`}
+									</Button>
+								</div>
+							</div>
+						{:else}
+							<p class="mt-4 text-sm text-muted-foreground">No imported books are stored here.</p>
+						{/if}
+					</details>
+					<p class="mt-3 text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
+						{storageStatus}
+					</p>
 				</section>
 			{/if}
 		</div>
