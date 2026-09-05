@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { authState } from '$lib/api/auth.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import {
@@ -24,6 +25,10 @@
 	let revoking = $state(false);
 	let revokeSuccess = $state<string | null>(null);
 	let revokeError = $state<string | null>(null);
+
+	onMount(() => {
+		authState.checkSession();
+	});
 
 	async function handleSignOut() {
 		await authState.signOut();

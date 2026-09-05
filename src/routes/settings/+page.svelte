@@ -69,7 +69,7 @@
 	] as const;
 
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
-	let activeSection = $state<(typeof settingsSections)[number]['id']>('appearance');
+	let activeSection = $state<(typeof settingsSections)[number]['id']>('account');
 	let annotationCount = $state(0);
 	let menuOpen = $state(false);
 	let exporting = $state(false);
