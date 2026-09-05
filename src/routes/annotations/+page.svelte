@@ -112,37 +112,27 @@
 <div class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300">
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-	<header class="mt-2">
-		<p class="text-sm font-medium text-primary">Your reading</p>
-		<div class="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-			<div>
-				<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Bookmarks and highlights</h1>
-				<p class="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">
-					Review passages saved locally across your library.
-				</p>
-			</div>
-
-			<div
-				class="flex w-full gap-1 rounded-lg bg-muted p-1 sm:w-auto"
-				aria-label="Filter annotations"
-			>
-				{#each ['all', 'bookmark', 'highlight'] as option (option)}
-					<button
-						type="button"
-						class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors sm:flex-none"
-						class:bg-background={filter === option}
-						class:shadow-sm={filter === option}
-						onclick={() => (filter = option as AnnotationFilter)}
-						aria-pressed={filter === option}
-					>
-						{option === 'all' ? 'All' : `${option}s`}
-					</button>
-				{/each}
-			</div>
+	<header class="mb-4 flex items-center justify-between">
+		<div
+			class="flex w-full gap-1 rounded-lg bg-muted p-1 sm:w-auto"
+			aria-label="Filter annotations"
+		>
+			{#each ['all', 'bookmark', 'highlight'] as option (option)}
+				<button
+					type="button"
+					class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors sm:flex-none"
+					class:bg-background={filter === option}
+					class:shadow-sm={filter === option}
+					onclick={() => (filter = option as AnnotationFilter)}
+					aria-pressed={filter === option}
+				>
+					{option === 'all' ? 'All' : `${option}s`}
+				</button>
+			{/each}
 		</div>
 	</header>
 
-	<main class="mt-6">
+	<main class="mt-4">
 		{#if loading}
 			<p class="py-16 text-center text-muted-foreground" role="status">Loading annotations…</p>
 		{:else if error}
