@@ -4,6 +4,7 @@
 	import { onMount } from 'svelte';
 	import { Bookmark, Highlighter, Trash2 } from 'lucide-svelte';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
+	import TopBar from '$lib/components/library/TopBar.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { deleteAnnotation, getAllAnnotations, getAllBooks, type BookMetadata } from '$lib/db';
 	import type { BookAnnotation, AnnotationKind } from '$lib/reader/annotations';
@@ -15,6 +16,10 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let filter = $state<AnnotationFilter>('all');
+	let darkMode = $state(false);
+	let showInstall = $state(false);
+	let installPrompt = $state<any>(null);
+
 	let filteredAnnotations = $derived(
 		filter === 'all' ? annotations : annotations.filter((annotation) => annotation.kind === filter)
 	);
@@ -27,12 +32,18 @@
 
 	onMount(async () => {
 		const savedTheme = localStorage.getItem('theme');
-		if (
+		darkMode =
 			savedTheme === 'dark' ||
-			(!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-		) {
+			(!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+		if (darkMode) {
 			document.documentElement.classList.add('dark');
 		}
+
+		window.addEventListener('beforeinstallprompt', (e) => {
+			e.preventDefault();
+			installPrompt = e;
+			showInstall = true;
+		});
 
 		try {
 			[annotations, books] = await Promise.all([getAllAnnotations(), getAllBooks()]);
@@ -42,6 +53,27 @@
 			loading = false;
 		}
 	});
+
+	function toggleDarkMode() {
+		darkMode = !darkMode;
+		if (darkMode) {
+			document.documentElement.classList.add('dark');
+			localStorage.setItem('theme', 'dark');
+		} else {
+			document.documentElement.classList.remove('dark');
+			localStorage.setItem('theme', 'light');
+		}
+	}
+
+	async function handleInstall() {
+		if (!installPrompt) return;
+		installPrompt.prompt();
+		const { outcome } = await installPrompt.userChoice;
+		if (outcome === 'accepted') {
+			showInstall = false;
+			installPrompt = null;
+		}
+	}
 
 	function openLibrary() {
 		goto(resolve('/'));
@@ -78,6 +110,10 @@
 <svelte:head><title>Annotations · Granthalay</title></svelte:head>
 
 <div class="min-h-screen bg-background px-4 pt-5 pb-24 text-foreground sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-7xl">
+		<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
+	</div>
+
 	<header class="mx-auto max-w-7xl">
 		<p class="text-sm font-medium text-primary">Your reading</p>
 		<div class="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
