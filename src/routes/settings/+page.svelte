@@ -32,6 +32,7 @@
 		validateBackupPassphrase
 	} from '$lib/backup-crypto';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
+	import TopBar from '$lib/components/library/TopBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
 	import AccountSection from '$lib/components/settings/AccountSection.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -72,6 +73,9 @@
 	let activeSection = $state<(typeof settingsSections)[number]['id']>('account');
 	let annotationCount = $state(0);
 	let menuOpen = $state(false);
+	let darkMode = $state(false);
+	let showInstall = $state(false);
+	let installPrompt = $state<any>(null);
 	let exporting = $state(false);
 	let exportStatus = $state('');
 	let exportPassphrase = $state('');
@@ -102,7 +106,18 @@
 			activeSection = requestedSection as (typeof settingsSections)[number]['id'];
 		}
 		preferences = loadGlobalReaderPreferences();
+		darkMode =
+			preferences.theme === 'dark' ||
+			(preferences.theme === 'system' &&
+				window.matchMedia('(prefers-color-scheme: dark)').matches);
 		applyTheme(preferences.theme);
+
+		window.addEventListener('beforeinstallprompt', (e) => {
+			e.preventDefault();
+			installPrompt = e;
+			showInstall = true;
+		});
+
 		try {
 			annotationCount = (await getAllAnnotations()).length;
 		} catch {
@@ -110,6 +125,22 @@
 		}
 		await refreshStorageHealth();
 	});
+
+	function toggleDarkMode() {
+		darkMode = !darkMode;
+		const newTheme = darkMode ? 'dark' : 'light';
+		updatePreferences({ theme: newTheme });
+	}
+
+	async function handleInstall() {
+		if (!installPrompt) return;
+		installPrompt.prompt();
+		const { outcome } = await installPrompt.userChoice;
+		if (outcome === 'accepted') {
+			showInstall = false;
+			installPrompt = null;
+		}
+	}
 
 	async function refreshStorageHealth() {
 		loadingStorage = true;
@@ -314,8 +345,10 @@
 
 <svelte:head><title>Settings · Granthalay</title></svelte:head>
 
-<div class="min-h-screen bg-background pb-24 font-sans text-foreground">
-	<header class="sticky top-0 z-30 h-14 bg-background/95 shadow-sm backdrop-blur">
+<div class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300">
+	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
+
+	<header class="sticky top-0 z-30 mb-4 h-14 bg-background/95 shadow-sm backdrop-blur">
 		<div class="flex h-full items-center gap-3 px-4 sm:px-6 lg:px-8">
 			<Sheet.Root bind:open={menuOpen}>
 				<Sheet.Trigger>
