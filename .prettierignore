@@ -9,3 +9,7 @@ bun.lockb
 /static/
 .cursor/skills/
 .gemini/skills/
+
+# Documentation is not part of code quality CI
+*.md
+docs/
