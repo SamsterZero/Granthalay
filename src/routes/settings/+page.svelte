@@ -399,9 +399,7 @@
 
 		<div class="min-w-0">
 			{#if activeSection === 'account'}
-				<section id="account" class="scroll-mt-20">
-					<AccountSection />
-				</section>
+				<AccountSection />
 			{:else if activeSection === 'appearance'}
 				<section id="appearance" class="scroll-mt-20">
 					<ReaderAppearance
