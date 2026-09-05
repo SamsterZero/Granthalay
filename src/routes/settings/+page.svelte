@@ -6,7 +6,6 @@
 		CircleCheck,
 		Download,
 		ExternalLink,
-		Menu,
 		RefreshCw,
 		Trash2,
 		Upload
@@ -37,7 +36,6 @@
 	import AccountSection from '$lib/components/settings/AccountSection.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
-	import * as Sheet from '$lib/components/ui/sheet';
 	import { deleteBooksByIds, getAllAnnotations, getAllBooks, type BookMetadata } from '$lib/db';
 	import {
 		DEFAULT_READER_PREFERENCES,
@@ -72,7 +70,6 @@
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
 	let activeSection = $state<(typeof settingsSections)[number]['id']>('account');
 	let annotationCount = $state(0);
-	let menuOpen = $state(false);
 	let darkMode = $state(false);
 	let showInstall = $state(false);
 	let installPrompt = $state<any>(null);
@@ -226,7 +223,6 @@
 	}
 
 	function showSection(id: (typeof settingsSections)[number]['id']) {
-		menuOpen = false;
 		activeSection = id;
 		history.replaceState(null, '', `#${id}`);
 	}
@@ -348,56 +344,24 @@
 <div class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300">
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-	<header class="sticky top-0 z-30 mb-4 h-14 bg-background/95 shadow-sm backdrop-blur">
-		<div class="flex h-full items-center gap-3 px-4 sm:px-6 lg:px-8">
-			<Sheet.Root bind:open={menuOpen}>
-				<Sheet.Trigger>
-					{#snippet child({ props })}
-						<Button
-							variant="ghost"
-							size="icon"
-							class="shrink-0 lg:hidden"
-							aria-label="Open settings menu"
-							{...props}
-						>
-							<Menu class="h-5 w-5" />
-						</Button>
-					{/snippet}
-				</Sheet.Trigger>
-				<Sheet.Content side="left" class="w-72">
-					<Sheet.Header>
-						<Sheet.Title>Settings</Sheet.Title>
-						<Sheet.Description>Choose a section.</Sheet.Description>
-					</Sheet.Header>
-					<nav class="grid gap-1 px-3" aria-label="Settings sections">
-						{#each settingsSections as section (section.id)}
-							<button
-								type="button"
-								class="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-muted focus-visible:outline-2"
-								onclick={() => showSection(section.id)}
-								aria-current={activeSection === section.id ? 'page' : undefined}
-							>
-								{section.label}
-							</button>
-						{/each}
-						{#each policyLinks as link (link.href)}
-							<a
-								href={link.href}
-								target="_blank"
-								rel="noreferrer"
-								class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
-							>
-								{link.label}
-								<ExternalLink class="h-4 w-4" aria-hidden="true" />
-							</a>
-						{/each}
-					</nav>
-				</Sheet.Content>
-			</Sheet.Root>
-
-			<h1 class="text-lg font-semibold tracking-tight">Settings</h1>
-		</div>
-	</header>
+	<nav
+		class="mb-4 flex overflow-x-auto gap-1 border-b border-border pb-2 lg:hidden"
+		aria-label="Settings sections"
+	>
+		{#each settingsSections as section (section.id)}
+			<button
+				type="button"
+				class="shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+				class:bg-primary={activeSection === section.id}
+				class:text-primary-foreground={activeSection === section.id}
+				class:text-muted-foreground={activeSection !== section.id}
+				onclick={() => showSection(section.id)}
+				aria-current={activeSection === section.id ? 'page' : undefined}
+			>
+				{section.label}
+			</button>
+		{/each}
+	</nav>
 
 	<main
 		class="grid gap-8 px-4 pt-2 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
