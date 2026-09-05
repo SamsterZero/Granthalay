@@ -22,8 +22,11 @@ flowchart LR
 - `src/routes/+page.svelte`: library loading, import, view, theme, and install prompt.
 - `src/routes/annotations/+page.svelte`: responsive library-wide bookmark and highlight management.
 - `src/routes/settings/+page.svelte`: responsive global reading defaults and local-privacy guidance.
+- `src/routes/account/+page.svelte`: account status overview, verified status, and active session management.
+- `src/routes/account/register`, `sign-in`, `verify-email`, `password-reset`: responsive authentication flows.
 - `src/routes/book/[bookId]/+page.svelte`: metadata, chapters, and start/resume links.
 - `src/routes/reader/+page.svelte`: measurement, pagination, navigation, and progress.
+- `src/lib/api/client.ts` & `auth.svelte.ts`: versioned API client, HttpOnly cookie credentials, XSRF token handling, and reactive auth state.
 - `src/lib/epub/engine.ts`: ZIP, container/OPF/TOC/CSS, resources, sanitization, and chapters.
 - `src/lib/db.ts`: native IndexedDB boundary.
 - `src/lib/backup.ts`: versioned backup creation, validation, conflict preview, and restoration.

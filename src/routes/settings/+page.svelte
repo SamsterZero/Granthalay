@@ -33,6 +33,7 @@
 	} from '$lib/backup-crypto';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
+	import AccountSection from '$lib/components/settings/AccountSection.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
 	import * as Sheet from '$lib/components/ui/sheet';
@@ -50,6 +51,7 @@
 	} from '$lib/storage-health';
 
 	const settingsSections = [
+		{ id: 'account', label: 'Account & Security' },
 		{ id: 'appearance', label: 'Appearance' },
 		{ id: 'behavior', label: 'Reading behavior' },
 		{ id: 'backup-restore', label: 'Backup & restore' },
@@ -396,7 +398,11 @@
 		</aside>
 
 		<div class="min-w-0">
-			{#if activeSection === 'appearance'}
+			{#if activeSection === 'account'}
+				<section id="account" class="scroll-mt-20">
+					<AccountSection />
+				</section>
+			{:else if activeSection === 'appearance'}
 				<section id="appearance" class="scroll-mt-20">
 					<ReaderAppearance
 						{preferences}

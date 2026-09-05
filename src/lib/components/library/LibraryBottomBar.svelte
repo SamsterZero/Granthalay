@@ -1,18 +1,19 @@
 <script lang="ts">
-	import { Bookmark, Library, Settings } from 'lucide-svelte';
+	import { Bookmark, Library, User } from 'lucide-svelte';
+	import { goto } from '$app/navigation';
 
 	let {
 		active,
 		annotationCount = 0,
-		onOpenLibrary,
-		onOpenAnnotations,
-		onOpenSettings
+		onOpenLibrary = () => goto('/'),
+		onOpenAnnotations = () => goto('/annotations'),
+		onOpenSettings = () => goto('/settings')
 	}: {
-		active: 'library' | 'annotations' | 'settings';
+		active: 'library' | 'annotations' | 'settings' | 'account';
 		annotationCount?: number;
-		onOpenLibrary: () => void;
-		onOpenAnnotations: () => void;
-		onOpenSettings: () => void;
+		onOpenLibrary?: () => void;
+		onOpenAnnotations?: () => void;
+		onOpenSettings?: () => void;
 	} = $props();
 </script>
 
@@ -59,13 +60,13 @@
 		<button
 			type="button"
 			class="flex min-w-24 flex-col items-center gap-1 rounded-md px-4 py-2 text-xs font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2"
-			class:text-primary={active === 'settings'}
-			class:text-muted-foreground={active !== 'settings'}
+			class:text-primary={active === 'settings' || active === 'account'}
+			class:text-muted-foreground={active !== 'settings' && active !== 'account'}
 			onclick={onOpenSettings}
-			aria-current={active === 'settings' ? 'page' : undefined}
+			aria-current={active === 'settings' || active === 'account' ? 'page' : undefined}
 		>
-			<Settings class="h-5 w-5" aria-hidden="true" />
-			Settings
+			<User class="h-5 w-5" aria-hidden="true" />
+			Profile
 		</button>
 	</div>
 </nav>
