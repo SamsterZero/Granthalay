@@ -109,12 +109,10 @@
 
 <svelte:head><title>Annotations · Granthalay</title></svelte:head>
 
-<div class="min-h-screen bg-background px-4 pt-5 pb-24 text-foreground sm:px-6 lg:px-8">
-	<div class="mx-auto max-w-7xl">
-		<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
-	</div>
+<div class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300">
+	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-	<header class="mx-auto max-w-7xl">
+	<header class="mt-2">
 		<p class="text-sm font-medium text-primary">Your reading</p>
 		<div class="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 			<div>
@@ -144,7 +142,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto mt-6 max-w-7xl">
+	<main class="mt-6">
 		{#if loading}
 			<p class="py-16 text-center text-muted-foreground" role="status">Loading annotations…</p>
 		{:else if error}
