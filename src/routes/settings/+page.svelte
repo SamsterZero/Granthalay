@@ -410,7 +410,7 @@
 					{@const SectionIcon = section.icon}
 					<button
 						type="button"
-						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted focus-visible:outline-2"
+						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/50 focus-visible:outline-2 active:bg-muted"
 						onclick={() => showSection(section.id)}
 					>
 						<div class="flex items-center gap-3.5">
@@ -429,7 +429,9 @@
 				{/each}
 			</div>
 
-			<h2 class="mt-8 mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+			<h2
+				class="mt-8 mb-2 px-1 text-xs font-semibold tracking-wider text-muted-foreground uppercase"
+			>
 				Policies & Legal
 			</h2>
 			<div class="divide-y divide-border rounded-xl border border-border bg-card shadow-xs">
@@ -459,9 +461,7 @@
 			</button>
 		{/if}
 
-		<main
-			class="grid gap-8 pt-2 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
-		>
+		<main class="grid gap-8 pt-2 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8">
 			<aside class="sticky top-6 hidden lg:block">
 				<nav class="grid gap-1" aria-label="Settings sections">
 					{#each settingsSections as section (section.id)}
@@ -532,9 +532,9 @@
 						<div class="mt-5">
 							<h3 class="text-sm font-semibold">Library backup</h3>
 							<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
-								Download an encrypted archive of your imported EPUBs, book details, reading progress,
-								preferences, bookmarks, and highlights. The passphrase cannot be recovered if
-								forgotten.
+								Download an encrypted archive of your imported EPUBs, book details, reading
+								progress, preferences, bookmarks, and highlights. The passphrase cannot be recovered
+								if forgotten.
 							</p>
 							<div class="mt-4 grid items-end gap-3 sm:grid-cols-2">
 								<label class="grid gap-1 text-sm">
@@ -614,11 +614,13 @@
 									class="mt-4 rounded-md bg-muted/50 p-3"
 									aria-labelledby="restore-preview-heading"
 								>
-									<h4 id="restore-preview-heading" class="text-sm font-semibold">Restore preview</h4>
+									<h4 id="restore-preview-heading" class="text-sm font-semibold">
+										Restore preview
+									</h4>
 									{#if legacyPlaintextBackup}
 										<p class="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
-											This legacy backup is not encrypted. Store it securely and replace it with a new
-											encrypted export.
+											This legacy backup is not encrypted. Store it securely and replace it with a
+											new encrypted export.
 										</p>
 									{/if}
 									<p class="mt-1 text-xs break-all text-muted-foreground">{selectedBackupName}</p>
@@ -645,7 +647,11 @@
 												<span>Keep existing books and skip their backup copies</span>
 											</label>
 											<label class="flex items-start gap-2">
-												<input type="radio" bind:group={conflictStrategy} value="replace-existing" />
+												<input
+													type="radio"
+													bind:group={conflictStrategy}
+													value="replace-existing"
+												/>
 												<span>Replace existing books, progress, preferences, and annotations</span>
 											</label>
 										</fieldset>
@@ -701,7 +707,9 @@
 								<div class="mt-4">
 									<div class="flex justify-between gap-4 text-sm">
 										<span>{formatBytes(storageHealth.usage)} used</span>
-										<span class="text-muted-foreground">{formatBytes(storageHealth.quota)} quota</span>
+										<span class="text-muted-foreground"
+											>{formatBytes(storageHealth.quota)} quota</span
+										>
 									</div>
 									<div class="mt-2 h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
 										<div
@@ -744,7 +752,8 @@
 							</summary>
 							{#if storedBooks.length > 0}
 								<p class="mt-2 text-xs text-muted-foreground">
-									Permanently deletes each selected EPUB and its reading data. Export a backup first.
+									Permanently deletes each selected EPUB and its reading data. Export a backup
+									first.
 								</p>
 								<fieldset class="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1">
 									<legend class="sr-only">Select books to delete</legend>
@@ -766,12 +775,15 @@
 								<div class="mt-4 flex flex-col items-end gap-2">
 									{#if confirmBookDeletion}
 										<p class="text-sm text-destructive" role="alert">
-											This cannot be undone. Export a backup first if you may need these books later.
+											This cannot be undone. Export a backup first if you may need these books
+											later.
 										</p>
 									{/if}
 									<div class="flex flex-col gap-2 sm:flex-row">
 										{#if confirmBookDeletion}
-											<Button variant="outline" onclick={() => (confirmBookDeletion = false)}>Cancel</Button>
+											<Button variant="outline" onclick={() => (confirmBookDeletion = false)}
+												>Cancel</Button
+											>
 										{/if}
 										<Button
 											variant="destructive"
