@@ -60,12 +60,17 @@
 		}
 	] as const;
 
+	interface BeforeInstallPromptEvent extends Event {
+		prompt: () => void;
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+	}
+
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
 	let activeSection = $state<(typeof settingsSections)[number]['id']>('account');
 	let annotationCount = $state(0);
 	let darkMode = $state(false);
 	let showInstall = $state(false);
-	let installPrompt = $state<unknown>(null);
+	let installPrompt = $state<BeforeInstallPromptEvent | null>(null);
 	let exporting = $state(false);
 	let exportStatus = $state('');
 	let exportPassphrase = $state('');
@@ -103,7 +108,7 @@
 
 		window.addEventListener('beforeinstallprompt', (e) => {
 			e.preventDefault();
-			installPrompt = e;
+			installPrompt = e as BeforeInstallPromptEvent;
 			showInstall = true;
 		});
 

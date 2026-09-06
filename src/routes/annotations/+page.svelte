@@ -9,6 +9,11 @@
 	import { deleteAnnotation, getAllAnnotations, getAllBooks, type BookMetadata } from '$lib/db';
 	import type { BookAnnotation, AnnotationKind } from '$lib/reader/annotations';
 
+	interface BeforeInstallPromptEvent extends Event {
+		prompt: () => void;
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+	}
+
 	type AnnotationFilter = 'all' | AnnotationKind;
 
 	let annotations = $state<BookAnnotation[]>([]);
@@ -18,7 +23,7 @@
 	let filter = $state<AnnotationFilter>('all');
 	let darkMode = $state(false);
 	let showInstall = $state(false);
-	let installPrompt = $state<unknown>(null);
+	let installPrompt = $state<BeforeInstallPromptEvent | null>(null);
 
 	let filteredAnnotations = $derived(
 		filter === 'all' ? annotations : annotations.filter((annotation) => annotation.kind === filter)
@@ -41,7 +46,7 @@
 
 		window.addEventListener('beforeinstallprompt', (e) => {
 			e.preventDefault();
-			installPrompt = e;
+			installPrompt = e as BeforeInstallPromptEvent;
 			showInstall = true;
 		});
 
