@@ -2,7 +2,20 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import { CircleCheck, Download, ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-svelte';
+	import {
+		BookOpen,
+		ChevronLeft,
+		ChevronRight,
+		CircleCheck,
+		Database,
+		Download,
+		ExternalLink,
+		Palette,
+		RefreshCw,
+		ShieldCheck,
+		Trash2,
+		Upload
+	} from 'lucide-svelte';
 	import {
 		backupErrorMessage,
 		backupImportErrorMessage,
@@ -43,11 +56,36 @@
 	} from '$lib/storage-health';
 
 	const settingsSections = [
-		{ id: 'account', label: 'Account & Security' },
-		{ id: 'appearance', label: 'Appearance' },
-		{ id: 'behavior', label: 'Reading behavior' },
-		{ id: 'backup-restore', label: 'Backup & restore' },
-		{ id: 'storage-privacy', label: 'Storage & privacy' }
+		{
+			id: 'account',
+			label: 'Account & Security',
+			description: 'Sign in, session management & revocation',
+			icon: ShieldCheck
+		},
+		{
+			id: 'appearance',
+			label: 'Appearance',
+			description: 'Typography, font size, line spacing, themes',
+			icon: Palette
+		},
+		{
+			id: 'behavior',
+			label: 'Reading behavior',
+			description: 'Page turn direction and scroll mode',
+			icon: BookOpen
+		},
+		{
+			id: 'backup-restore',
+			label: 'Backup & restore',
+			description: 'Export encrypted archive or restore backup',
+			icon: Download
+		},
+		{
+			id: 'storage-privacy',
+			label: 'Storage & privacy',
+			description: 'Storage health, cache cleaning & EPUB data',
+			icon: Database
+		}
 	] as const;
 	const policyLinks = [
 		{
@@ -65,8 +103,9 @@
 		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 	}
 
+	let isMobile = $state(false);
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
-	let activeSection = $state<(typeof settingsSections)[number]['id']>('account');
+	let activeSection = $state<(typeof settingsSections)[number]['id'] | null>('account');
 	let annotationCount = $state(0);
 	let darkMode = $state(false);
 	let showInstall = $state(false);
@@ -96,9 +135,22 @@
 	let storageStatus = $state('');
 
 	onMount(async () => {
+		const checkMobile = () => {
+			isMobile = window.innerWidth < 1024;
+			if (isMobile && activeSection === 'account' && !window.location.hash) {
+				activeSection = null;
+			} else if (!isMobile && activeSection === null) {
+				activeSection = 'account';
+			}
+		};
+		checkMobile();
+		window.addEventListener('resize', checkMobile);
+
 		const requestedSection = window.location.hash.slice(1);
 		if (settingsSections.some((section) => section.id === requestedSection)) {
 			activeSection = requestedSection as (typeof settingsSections)[number]['id'];
+		} else if (isMobile && !requestedSection) {
+			activeSection = null;
 		}
 		preferences = loadGlobalReaderPreferences();
 		darkMode =
@@ -139,63 +191,61 @@
 	async function refreshStorageHealth() {
 		loadingStorage = true;
 		try {
-			[storageHealth, storedBooks] = await Promise.all([inspectStorageHealth(), getAllBooks()]);
-			selectedBookIds = selectedBookIds.filter((id) => storedBooks.some((book) => book.id === id));
-		} catch (error) {
-			storageStatus = error instanceof Error ? error.message : 'Storage details could not be read.';
+			storageHealth = await inspectStorageHealth();
+			storedBooks = await getAllBooks();
+			selectedBookIds = [];
+		} catch {
+			storageHealth = null;
+			storedBooks = [];
+			selectedBookIds = [];
 		} finally {
 			loadingStorage = false;
 		}
 	}
 
 	function toggleSelectedBook(bookId: string) {
-		selectedBookIds = selectedBookIds.includes(bookId)
-			? selectedBookIds.filter((id) => id !== bookId)
-			: [...selectedBookIds, bookId];
-		confirmBookDeletion = false;
+		if (selectedBookIds.includes(bookId)) {
+			selectedBookIds = selectedBookIds.filter((id) => id !== bookId);
+		} else {
+			selectedBookIds = [...selectedBookIds, bookId];
+		}
 	}
 
 	async function clearTemporaryCache() {
 		clearingCache = true;
-		storageStatus = 'Clearing temporary cached responses…';
+		storageStatus = 'Clearing temporary cache…';
 		try {
-			const count = await clearRuntimeCaches();
-			storageStatus = count
-				? 'Temporary cache cleared. Your books and offline app shell were not changed.'
-				: 'No temporary cache needed clearing. Your books were not changed.';
+			await clearRuntimeCaches();
 			await refreshStorageHealth();
+			storageStatus = 'Temporary cache cleared successfully.';
 		} catch (error) {
 			storageStatus =
-				error instanceof Error ? error.message : 'Temporary cache could not be cleared.';
+				error instanceof Error ? error.message : 'Could not clear temporary runtime cache.';
 		} finally {
 			clearingCache = false;
 		}
 	}
 
 	async function deleteSelectedBooks() {
-		if (!confirmBookDeletion || selectedBookIds.length === 0) return;
+		if (selectedBookIds.length === 0) return;
 		deletingBooks = true;
-		const count = selectedBookIds.length;
-		storageStatus = `Deleting ${count} selected ${count === 1 ? 'book' : 'books'}…`;
+		storageStatus = `Deleting ${selectedBookIds.length} book(s)…`;
 		try {
 			await deleteBooksByIds(selectedBookIds);
-			selectedBookIds = [];
 			confirmBookDeletion = false;
-			annotationCount = (await getAllAnnotations()).length;
-			storageStatus = `${count} ${count === 1 ? 'book was' : 'books were'} deleted with their EPUB data and annotations.`;
 			await refreshStorageHealth();
+			storageStatus = 'Selected books removed from local storage.';
 		} catch (error) {
-			storageStatus =
-				error instanceof Error ? error.message : 'Selected books could not be deleted.';
+			storageStatus = error instanceof Error ? error.message : 'Could not delete selected books.';
 		} finally {
 			deletingBooks = false;
 		}
 	}
 
-	function updatePreferences(update: Partial<ReaderPreferences>) {
-		preferences = { ...preferences, ...update };
+	function updatePreferences(next: Partial<ReaderPreferences>) {
+		preferences = { ...preferences, ...next };
 		localStorage.setItem(READER_PREFERENCES_KEY, JSON.stringify(preferences));
-		if (update.theme) applyTheme(preferences.theme);
+		applyTheme(preferences.theme);
 	}
 
 	function resetAppearance() {
@@ -222,6 +272,13 @@
 	function showSection(id: (typeof settingsSections)[number]['id']) {
 		activeSection = id;
 		history.replaceState(null, '', `#${id}`);
+		window.scrollTo({ top: 0, behavior: 'instant' });
+	}
+
+	function goBackToMenu() {
+		activeSection = null;
+		history.replaceState(null, '', window.location.pathname);
+		window.scrollTo({ top: 0, behavior: 'instant' });
 	}
 
 	function openLibrary() {
@@ -343,368 +400,406 @@
 >
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-	<nav
-		class="mb-4 flex gap-1 overflow-x-auto border-b border-border pb-2 lg:hidden"
-		aria-label="Settings sections"
-	>
-		{#each settingsSections as section (section.id)}
-			<button
-				type="button"
-				class="shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-				class:bg-primary={activeSection === section.id}
-				class:text-primary-foreground={activeSection === section.id}
-				class:text-muted-foreground={activeSection !== section.id}
-				onclick={() => showSection(section.id)}
-				aria-current={activeSection === section.id ? 'page' : undefined}
-			>
-				{section.label}
-			</button>
-		{/each}
-	</nav>
+	<!-- Mobile Master Menu View (when activeSection is null) -->
+	{#if isMobile && activeSection === null}
+		<div class="py-2 sm:px-2">
+			<h1 class="mb-4 text-xl font-bold tracking-tight">Settings</h1>
 
-	<main
-		class="grid gap-8 px-4 pt-2 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
-	>
-		<aside class="sticky top-6 hidden lg:block">
-			<nav class="grid gap-1" aria-label="Settings sections">
+			<div class="divide-y divide-border rounded-xl border border-border bg-card shadow-xs">
 				{#each settingsSections as section (section.id)}
+					{@const SectionIcon = section.icon}
 					<button
 						type="button"
-						class="rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
-						class:bg-muted={activeSection === section.id}
-						class:text-foreground={activeSection === section.id}
+						class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-muted/50 active:bg-muted focus-visible:outline-2"
 						onclick={() => showSection(section.id)}
-						aria-current={activeSection === section.id ? 'page' : undefined}
 					>
-						{section.label}
+						<div class="flex items-center gap-3.5">
+							<div
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"
+							>
+								<SectionIcon class="h-5 w-5" />
+							</div>
+							<div>
+								<div class="text-sm font-semibold text-foreground">{section.label}</div>
+								<div class="text-xs text-muted-foreground">{section.description}</div>
+							</div>
+						</div>
+						<ChevronRight class="h-5 w-5 shrink-0 text-muted-foreground" />
 					</button>
 				{/each}
+			</div>
+
+			<h2 class="mt-8 mb-2 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+				Policies & Legal
+			</h2>
+			<div class="divide-y divide-border rounded-xl border border-border bg-card shadow-xs">
 				{#each policyLinks as link (link.href)}
 					<a
 						href={link.href}
 						target="_blank"
 						rel="noreferrer"
-						class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
+						class="flex items-center justify-between p-4 text-sm font-medium text-foreground hover:bg-muted/50"
 					>
-						{link.label}
-						<ExternalLink class="h-4 w-4" aria-hidden="true" />
+						<span>{link.label}</span>
+						<ExternalLink class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 					</a>
 				{/each}
-			</nav>
-		</aside>
+			</div>
+		</div>
+	{:else}
+		<!-- Mobile Back Button -->
+		{#if isMobile && activeSection !== null}
+			<button
+				type="button"
+				class="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+				onclick={goBackToMenu}
+			>
+				<ChevronLeft class="h-4 w-4" />
+				Back to Settings
+			</button>
+		{/if}
 
-		<div class="min-w-0">
-			{#if activeSection === 'account'}
-				<AccountSection />
-			{:else if activeSection === 'appearance'}
-				<section id="appearance" class="scroll-mt-20">
-					<ReaderAppearance
-						{preferences}
-						onUpdate={updatePreferences}
-						onReset={resetAppearance}
-						heading="Appearance"
-						resetLabel="Reset"
-						embedded
-						mode="appearance"
-					/>
-					<p class="px-4 text-xs text-muted-foreground">
-						Per-book settings override these defaults.
-					</p>
-				</section>
-			{:else if activeSection === 'behavior'}
-				<section id="behavior" class="scroll-mt-20">
-					<ReaderAppearance
-						{preferences}
-						onUpdate={updatePreferences}
-						onReset={resetBehavior}
-						heading="Reading behavior"
-						resetLabel="Reset"
-						embedded
-						mode="behavior"
-					/>
-					<p class="px-4 text-xs text-muted-foreground">
-						Choose the default direction for page turns or use continuous vertical scrolling.
-					</p>
-				</section>
-			{:else if activeSection === 'backup-restore'}
-				<section id="backup-restore" class="scroll-mt-20 px-4 pb-4">
-					<h2 class="text-base font-semibold">Backup & restore</h2>
-					<p class="mt-1 text-sm text-muted-foreground">
-						Keep an independent copy of your local library and reading data.
-					</p>
-					<div class="mt-5">
-						<h3 class="text-sm font-semibold">Library backup</h3>
-						<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
-							Download an encrypted archive of your imported EPUBs, book details, reading progress,
-							preferences, bookmarks, and highlights. The passphrase cannot be recovered if
-							forgotten.
+		<main
+			class="grid gap-8 pt-2 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
+		>
+			<aside class="sticky top-6 hidden lg:block">
+				<nav class="grid gap-1" aria-label="Settings sections">
+					{#each settingsSections as section (section.id)}
+						<button
+							type="button"
+							class="rounded-md px-3 py-2 text-left text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
+							class:bg-muted={activeSection === section.id}
+							class:text-foreground={activeSection === section.id}
+							onclick={() => showSection(section.id)}
+							aria-current={activeSection === section.id ? 'page' : undefined}
+						>
+							{section.label}
+						</button>
+					{/each}
+					{#each policyLinks as link (link.href)}
+						<a
+							href={link.href}
+							target="_blank"
+							rel="noreferrer"
+							class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
+						>
+							{link.label}
+							<ExternalLink class="h-4 w-4" aria-hidden="true" />
+						</a>
+					{/each}
+				</nav>
+			</aside>
+
+			<div class="min-w-0">
+				{#if activeSection === 'account'}
+					<AccountSection />
+				{:else if activeSection === 'appearance'}
+					<section id="appearance" class="scroll-mt-20">
+						<ReaderAppearance
+							{preferences}
+							onUpdate={updatePreferences}
+							onReset={resetAppearance}
+							heading="Appearance"
+							resetLabel="Reset"
+							embedded
+							mode="appearance"
+						/>
+						<p class="px-4 text-xs text-muted-foreground">
+							Per-book settings override these defaults.
 						</p>
-						<div class="mt-4 grid items-end gap-3 sm:grid-cols-2">
-							<label class="grid gap-1 text-sm">
+					</section>
+				{:else if activeSection === 'behavior'}
+					<section id="behavior" class="scroll-mt-20">
+						<ReaderAppearance
+							{preferences}
+							onUpdate={updatePreferences}
+							onReset={resetBehavior}
+							heading="Reading behavior"
+							resetLabel="Reset"
+							embedded
+							mode="behavior"
+						/>
+						<p class="px-4 text-xs text-muted-foreground">
+							Choose the default direction for page turns or use continuous vertical scrolling.
+						</p>
+					</section>
+				{:else if activeSection === 'backup-restore'}
+					<section id="backup-restore" class="scroll-mt-20 px-4 pb-4">
+						<h2 class="text-base font-semibold">Backup & restore</h2>
+						<p class="mt-1 text-sm text-muted-foreground">
+							Keep an independent copy of your local library and reading data.
+						</p>
+						<div class="mt-5">
+							<h3 class="text-sm font-semibold">Library backup</h3>
+							<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+								Download an encrypted archive of your imported EPUBs, book details, reading progress,
+								preferences, bookmarks, and highlights. The passphrase cannot be recovered if
+								forgotten.
+							</p>
+							<div class="mt-4 grid items-end gap-3 sm:grid-cols-2">
+								<label class="grid gap-1 text-sm">
+									<span>Backup passphrase</span>
+									<input
+										type="password"
+										class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										autocomplete="new-password"
+										minlength="12"
+										bind:value={exportPassphrase}
+									/>
+								</label>
+								<label class="grid gap-1 text-sm">
+									<span>Confirm passphrase</span>
+									<input
+										type="password"
+										class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										autocomplete="new-password"
+										minlength="12"
+										bind:value={exportPassphraseConfirmation}
+									/>
+								</label>
+							</div>
+							<p class="mt-1 text-xs text-muted-foreground">At least 12 characters</p>
+							<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
+								<Button
+									onclick={exportLibrary}
+									disabled={exporting}
+									class="w-full sm:w-auto sm:shrink-0"
+								>
+									<Download aria-hidden="true" />
+									{exporting ? 'Preparing…' : 'Export backup'}
+								</Button>
+							</div>
+							<p class="mt-3 text-xs text-muted-foreground" aria-live="polite">{exportStatus}</p>
+						</div>
+						<div class="mt-7">
+							<h3 class="text-sm font-semibold">Restore a backup</h3>
+							<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
+								Enter the archive passphrase, then choose an exported Granthalay backup. Legacy
+								plaintext ZIP backups remain supported with a warning.
+							</p>
+							<label class="mt-4 grid max-w-md gap-1 text-sm">
 								<span>Backup passphrase</span>
 								<input
 									type="password"
 									class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									autocomplete="new-password"
-									minlength="12"
-									bind:value={exportPassphrase}
+									autocomplete="current-password"
+									bind:value={importPassphrase}
 								/>
 							</label>
-							<label class="grid gap-1 text-sm">
-								<span>Confirm passphrase</span>
+							<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
 								<input
-									type="password"
-									class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									autocomplete="new-password"
-									minlength="12"
-									bind:value={exportPassphraseConfirmation}
+									type="file"
+									class="sr-only"
+									accept=".granthalay,.zip,.granthalay.zip,application/zip,application/octet-stream"
+									onchange={inspectBackup}
+									bind:this={backupInput}
 								/>
-							</label>
-						</div>
-						<p class="mt-1 text-xs text-muted-foreground">At least 12 characters</p>
-						<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
-							<Button
-								onclick={exportLibrary}
-								disabled={exporting}
-								class="w-full sm:w-auto sm:shrink-0"
-							>
-								<Download aria-hidden="true" />
-								{exporting ? 'Preparing…' : 'Export backup'}
-							</Button>
-						</div>
-						<p class="mt-3 text-xs text-muted-foreground" aria-live="polite">{exportStatus}</p>
-					</div>
-					<div class="mt-7">
-						<h3 class="text-sm font-semibold">Restore a backup</h3>
-						<p class="mt-1 max-w-2xl text-xs text-muted-foreground">
-							Enter the archive passphrase, then choose an exported Granthalay backup. Legacy
-							plaintext ZIP backups remain supported with a warning.
-						</p>
-						<label class="mt-4 grid max-w-md gap-1 text-sm">
-							<span>Backup passphrase</span>
-							<input
-								type="password"
-								class="h-9 rounded-md border border-input bg-transparent px-3 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								autocomplete="current-password"
-								bind:value={importPassphrase}
-							/>
-						</label>
-						<div class="mt-4 flex flex-col justify-end gap-2 sm:flex-row">
-							<input
-								type="file"
-								class="sr-only"
-								accept=".granthalay,.zip,.granthalay.zip,application/zip,application/octet-stream"
-								onchange={inspectBackup}
-								bind:this={backupInput}
-							/>
-							<Button
-								variant="outline"
-								class="w-full sm:w-auto sm:shrink-0"
-								onclick={() => backupInput?.click()}
-							>
-								<Upload class="h-4 w-4" aria-hidden="true" />
-								Choose backup
-							</Button>
-							{#if selectedBackupFile && !selectedBackup}
-								<Button class="w-full sm:w-auto" onclick={validateSelectedBackup}>
-									Unlock & validate
+								<Button
+									variant="outline"
+									class="w-full sm:w-auto sm:shrink-0"
+									onclick={() => backupInput?.click()}
+								>
+									<Upload class="h-4 w-4" aria-hidden="true" />
+									Choose backup
 								</Button>
+								{#if selectedBackupFile && !selectedBackup}
+									<Button class="w-full sm:w-auto" onclick={validateSelectedBackup}>
+										Unlock & validate
+									</Button>
+								{/if}
+							</div>
+
+							{#if backupPreview && selectedBackup}
+								<div
+									class="mt-4 rounded-md bg-muted/50 p-3"
+									aria-labelledby="restore-preview-heading"
+								>
+									<h4 id="restore-preview-heading" class="text-sm font-semibold">Restore preview</h4>
+									{#if legacyPlaintextBackup}
+										<p class="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
+											This legacy backup is not encrypted. Store it securely and replace it with a new
+											encrypted export.
+										</p>
+									{/if}
+									<p class="mt-1 text-xs break-all text-muted-foreground">{selectedBackupName}</p>
+									<ul class="mt-2 list-inside list-disc text-sm">
+										<li>{backupPreview.newBooks.length} new books</li>
+										<li>{backupPreview.conflicts.length} books already in this library</li>
+										<li>{backupPreview.annotationCount} bookmarks and highlights</li>
+										<li>Reader defaults and library preferences will be replaced</li>
+									</ul>
+									{#if backupPreview.conflicts.length > 0}
+										<p class="mt-3 text-sm font-medium">Conflicting books</p>
+										<ul class="mt-1 list-inside list-disc text-xs text-muted-foreground">
+											{#each backupPreview.conflicts.slice(0, 5) as book (book.id)}
+												<li>{book.title}</li>
+											{/each}
+											{#if backupPreview.conflicts.length > 5}
+												<li>And {backupPreview.conflicts.length - 5} more</li>
+											{/if}
+										</ul>
+										<fieldset class="mt-3 grid gap-2 text-sm">
+											<legend class="font-medium">For existing books</legend>
+											<label class="flex items-start gap-2">
+												<input type="radio" bind:group={conflictStrategy} value="keep-existing" />
+												<span>Keep existing books and skip their backup copies</span>
+											</label>
+											<label class="flex items-start gap-2">
+												<input type="radio" bind:group={conflictStrategy} value="replace-existing" />
+												<span>Replace existing books, progress, preferences, and annotations</span>
+											</label>
+										</fieldset>
+									{/if}
+									<div class="mt-4 flex justify-end">
+										<Button class="w-full sm:w-auto" onclick={importBackup} disabled={importing}>
+											{importing ? 'Restoring…' : 'Restore backup'}
+										</Button>
+									</div>
+								</div>
+							{/if}
+							{#if importStatus}
+								<div
+									class="mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-xs {importStatusKind ===
+									'success'
+										? 'bg-primary/10 text-foreground'
+										: importStatusKind === 'error'
+											? 'bg-destructive/10 text-destructive'
+											: 'text-muted-foreground'}"
+									aria-live="polite"
+									aria-atomic="true"
+								>
+									{#if importStatusKind === 'loading'}
+										<Spinner class="shrink-0" aria-label="Restoring backup" />
+									{:else if importStatusKind === 'success'}
+										<CircleCheck class="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+									{/if}
+									<span>{importStatus}</span>
+								</div>
 							{/if}
 						</div>
-
-						{#if backupPreview && selectedBackup}
-							<div
-								class="mt-4 rounded-md bg-muted/50 p-3"
-								aria-labelledby="restore-preview-heading"
-							>
-								<h4 id="restore-preview-heading" class="text-sm font-semibold">Restore preview</h4>
-								{#if legacyPlaintextBackup}
-									<p class="mt-2 rounded-md bg-destructive/10 p-2 text-xs text-destructive">
-										This legacy backup is not encrypted. Store it securely and replace it with a new
-										encrypted export.
+					</section>
+				{:else if activeSection === 'storage-privacy'}
+					<section id="storage-privacy" class="scroll-mt-20 px-4 pb-4">
+						<h2 class="text-base font-semibold">Storage & privacy</h2>
+						<p class="mt-1 text-sm text-muted-foreground">
+							Check available space or safely free storage on this device.
+						</p>
+						<div class="mt-5">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+								<div>
+									<h3 class="text-sm font-semibold">Storage health</h3>
+									<p class="mt-1 text-xs text-muted-foreground">
+										Includes books, preferences, and cached data for this site.
 									</p>
-								{/if}
-								<p class="mt-1 text-xs break-all text-muted-foreground">{selectedBackupName}</p>
-								<ul class="mt-2 list-inside list-disc text-sm">
-									<li>{backupPreview.newBooks.length} new books</li>
-									<li>{backupPreview.conflicts.length} books already in this library</li>
-									<li>{backupPreview.annotationCount} bookmarks and highlights</li>
-									<li>Reader defaults and library preferences will be replaced</li>
-								</ul>
-								{#if backupPreview.conflicts.length > 0}
-									<p class="mt-3 text-sm font-medium">Conflicting books</p>
-									<ul class="mt-1 list-inside list-disc text-xs text-muted-foreground">
-										{#each backupPreview.conflicts.slice(0, 5) as book (book.id)}
-											<li>{book.title}</li>
-										{/each}
-										{#if backupPreview.conflicts.length > 5}
-											<li>And {backupPreview.conflicts.length - 5} more</li>
-										{/if}
-									</ul>
-									<fieldset class="mt-3 grid gap-2 text-sm">
-										<legend class="font-medium">For existing books</legend>
-										<label class="flex items-start gap-2">
-											<input type="radio" bind:group={conflictStrategy} value="keep-existing" />
-											<span>Keep existing books and skip their backup copies</span>
-										</label>
-										<label class="flex items-start gap-2">
-											<input type="radio" bind:group={conflictStrategy} value="replace-existing" />
-											<span>Replace existing books, progress, preferences, and annotations</span>
-										</label>
-									</fieldset>
-								{/if}
-								<div class="mt-4 flex justify-end">
-									<Button class="w-full sm:w-auto" onclick={importBackup} disabled={importing}>
-										{importing ? 'Restoring…' : 'Restore backup'}
-									</Button>
 								</div>
+								<Button variant="outline" onclick={refreshStorageHealth} disabled={loadingStorage}>
+									<RefreshCw class={loadingStorage ? 'animate-spin' : ''} aria-hidden="true" />
+									Refresh
+								</Button>
 							</div>
-						{/if}
-						{#if importStatus}
-							<div
-								class="mt-3 flex items-center gap-2 rounded-md px-3 py-2 text-xs {importStatusKind ===
-								'success'
-									? 'bg-primary/10 text-foreground'
-									: importStatusKind === 'error'
-										? 'bg-destructive/10 text-destructive'
-										: 'text-muted-foreground'}"
-								aria-live="polite"
-								aria-atomic="true"
-							>
-								{#if importStatusKind === 'loading'}
-									<Spinner class="shrink-0" aria-label="Restoring backup" />
-								{:else if importStatusKind === 'success'}
-									<CircleCheck class="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-								{/if}
-								<span>{importStatus}</span>
-							</div>
-						{/if}
-					</div>
-				</section>
-			{:else}
-				<section id="storage-privacy" class="scroll-mt-20 px-4 pb-4">
-					<h2 class="text-base font-semibold">Storage & privacy</h2>
-					<p class="mt-1 text-sm text-muted-foreground">
-						Check available space or safely free storage on this device.
-					</p>
-					<div class="mt-5">
-						<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-							<div>
-								<h3 class="text-sm font-semibold">Storage health</h3>
-								<p class="mt-1 text-xs text-muted-foreground">
-									Includes books, preferences, and cached data for this site.
+							{#if storageHealth && storageHealth.usage !== null && storageHealth.quota !== null}
+								<div class="mt-4">
+									<div class="flex justify-between gap-4 text-sm">
+										<span>{formatBytes(storageHealth.usage)} used</span>
+										<span class="text-muted-foreground">{formatBytes(storageHealth.quota)} quota</span>
+									</div>
+									<div class="mt-2 h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+										<div
+											class="h-full rounded-full bg-primary"
+											style:width={`${Math.min(100, (storageHealth.usageRatio ?? 0) * 100)}%`}
+										></div>
+									</div>
+								</div>
+							{:else}
+								<p class="mt-4 text-sm text-muted-foreground">
+									This browser does not provide a storage usage estimate in the current context.
 								</p>
-							</div>
-							<Button variant="outline" onclick={refreshStorageHealth} disabled={loadingStorage}>
-								<RefreshCw class={loadingStorage ? 'animate-spin' : ''} aria-hidden="true" />
-								Refresh
-							</Button>
-						</div>
-						{#if storageHealth && storageHealth.usage !== null && storageHealth.quota !== null}
-							<div class="mt-4">
-								<div class="flex justify-between gap-4 text-sm">
-									<span>{formatBytes(storageHealth.usage)} used</span>
-									<span class="text-muted-foreground">{formatBytes(storageHealth.quota)} quota</span
-									>
-								</div>
-								<div class="mt-2 h-2 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-									<div
-										class="h-full rounded-full bg-primary"
-										style:width={`${Math.min(100, (storageHealth.usageRatio ?? 0) * 100)}%`}
-									></div>
-								</div>
-							</div>
-						{:else}
-							<p class="mt-4 text-sm text-muted-foreground">
-								This browser does not provide a storage usage estimate in the current context.
+							{/if}
+							<p class="mt-3 text-xs text-muted-foreground">
+								Cache:
+								{storageHealth?.cacheBytes === null || storageHealth?.cacheBytes === undefined
+									? 'unavailable'
+									: formatBytes(storageHealth.cacheBytes)}
+								· Storage protection:
+								{storageHealth?.persisted === true
+									? 'granted'
+									: storageHealth?.persisted === false
+										? 'not granted'
+										: 'unavailable'}
 							</p>
-						{/if}
-						<p class="mt-3 text-xs text-muted-foreground">
-							Cache:
-							{storageHealth?.cacheBytes === null || storageHealth?.cacheBytes === undefined
-								? 'unavailable'
-								: formatBytes(storageHealth.cacheBytes)}
-							· Storage protection:
-							{storageHealth?.persisted === true
-								? 'granted'
-								: storageHealth?.persisted === false
-									? 'not granted'
-									: 'unavailable'}
-						</p>
-						<div class="mt-3 flex justify-end">
-							<Button variant="outline" onclick={clearTemporaryCache} disabled={clearingCache}>
-								<Trash2 aria-hidden="true" />
-								{clearingCache ? 'Clearing…' : 'Clear temporary cache'}
-							</Button>
-						</div>
-						<p class="mt-2 text-xs text-muted-foreground">
-							Does not delete books or offline access.
-						</p>
-					</div>
-
-					<details class="mt-7">
-						<summary class="cursor-pointer text-sm font-semibold">
-							Remove imported books ({storedBooks.length})
-						</summary>
-						{#if storedBooks.length > 0}
+							<div class="mt-3 flex justify-end">
+								<Button variant="outline" onclick={clearTemporaryCache} disabled={clearingCache}>
+									<Trash2 aria-hidden="true" />
+									{clearingCache ? 'Clearing…' : 'Clear temporary cache'}
+								</Button>
+							</div>
 							<p class="mt-2 text-xs text-muted-foreground">
-								Permanently deletes each selected EPUB and its reading data. Export a backup first.
+								Does not delete books or offline access.
 							</p>
-							<fieldset class="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1">
-								<legend class="sr-only">Select books to delete</legend>
-								{#each storedBooks as book (book.id)}
-									<label class="flex items-start gap-3 rounded-md bg-muted/50 p-3 text-sm">
-										<input
-											type="checkbox"
-											class="mt-0.5"
-											checked={selectedBookIds.includes(book.id)}
-											onchange={() => toggleSelectedBook(book.id)}
-										/>
-										<span>
-											<span class="block font-medium">{book.title}</span>
-											<span class="block text-xs text-muted-foreground">{book.name}</span>
-										</span>
-									</label>
-								{/each}
-							</fieldset>
-							<div class="mt-4 flex flex-col items-end gap-2">
-								{#if confirmBookDeletion}
-									<p class="text-sm text-destructive" role="alert">
-										This cannot be undone. Export a backup first if you may need these books later.
-									</p>
-								{/if}
-								<div class="flex flex-col gap-2 sm:flex-row">
+						</div>
+
+						<details class="mt-7">
+							<summary class="cursor-pointer text-sm font-semibold">
+								Remove imported books ({storedBooks.length})
+							</summary>
+							{#if storedBooks.length > 0}
+								<p class="mt-2 text-xs text-muted-foreground">
+									Permanently deletes each selected EPUB and its reading data. Export a backup first.
+								</p>
+								<fieldset class="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1">
+									<legend class="sr-only">Select books to delete</legend>
+									{#each storedBooks as book (book.id)}
+										<label class="flex items-start gap-3 rounded-md bg-muted/50 p-3 text-sm">
+											<input
+												type="checkbox"
+												class="mt-0.5"
+												checked={selectedBookIds.includes(book.id)}
+												onchange={() => toggleSelectedBook(book.id)}
+											/>
+											<span>
+												<span class="block font-medium">{book.title}</span>
+												<span class="block text-xs text-muted-foreground">{book.name}</span>
+											</span>
+										</label>
+									{/each}
+								</fieldset>
+								<div class="mt-4 flex flex-col items-end gap-2">
 									{#if confirmBookDeletion}
-										<Button variant="outline" onclick={() => (confirmBookDeletion = false)}
-											>Cancel</Button
-										>
+										<p class="text-sm text-destructive" role="alert">
+											This cannot be undone. Export a backup first if you may need these books later.
+										</p>
 									{/if}
-									<Button
-										variant="destructive"
-										disabled={selectedBookIds.length === 0 || deletingBooks}
-										onclick={() =>
-											confirmBookDeletion ? deleteSelectedBooks() : (confirmBookDeletion = true)}
-									>
-										<Trash2 aria-hidden="true" />
-										{deletingBooks
-											? 'Deleting…'
-											: confirmBookDeletion
-												? `Delete ${selectedBookIds.length} permanently`
-												: `Delete selected (${selectedBookIds.length})`}
-									</Button>
+									<div class="flex flex-col gap-2 sm:flex-row">
+										{#if confirmBookDeletion}
+											<Button variant="outline" onclick={() => (confirmBookDeletion = false)}>Cancel</Button>
+										{/if}
+										<Button
+											variant="destructive"
+											disabled={selectedBookIds.length === 0 || deletingBooks}
+											onclick={() =>
+												confirmBookDeletion ? deleteSelectedBooks() : (confirmBookDeletion = true)}
+										>
+											<Trash2 aria-hidden="true" />
+											{deletingBooks
+												? 'Deleting…'
+												: confirmBookDeletion
+													? `Delete ${selectedBookIds.length} permanently`
+													: `Delete selected (${selectedBookIds.length})`}
+										</Button>
+									</div>
 								</div>
-							</div>
-						{:else}
-							<p class="mt-4 text-sm text-muted-foreground">No imported books are stored here.</p>
-						{/if}
-					</details>
-					<p class="mt-3 text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
-						{storageStatus}
-					</p>
-				</section>
-			{/if}
-		</div>
-	</main>
+							{:else}
+								<p class="mt-4 text-sm text-muted-foreground">No imported books are stored here.</p>
+							{/if}
+						</details>
+						<p class="mt-3 text-xs text-muted-foreground" aria-live="polite" aria-atomic="true">
+							{storageStatus}
+						</p>
+					</section>
+				{/if}
+			</div>
+		</main>
+	{/if}
 
 	<LibraryBottomBar
 		active="settings"
