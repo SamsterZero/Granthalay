@@ -4,9 +4,15 @@
 	import { onMount } from 'svelte';
 	import { Bookmark, Highlighter, Trash2 } from 'lucide-svelte';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
+	import TopBar from '$lib/components/library/TopBar.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { deleteAnnotation, getAllAnnotations, getAllBooks, type BookMetadata } from '$lib/db';
 	import type { BookAnnotation, AnnotationKind } from '$lib/reader/annotations';
+
+	interface BeforeInstallPromptEvent extends Event {
+		prompt: () => void;
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+	}
 
 	type AnnotationFilter = 'all' | AnnotationKind;
 
@@ -15,6 +21,10 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let filter = $state<AnnotationFilter>('all');
+	let darkMode = $state(false);
+	let showInstall = $state(false);
+	let installPrompt = $state<BeforeInstallPromptEvent | null>(null);
+
 	let filteredAnnotations = $derived(
 		filter === 'all' ? annotations : annotations.filter((annotation) => annotation.kind === filter)
 	);
@@ -27,12 +37,18 @@
 
 	onMount(async () => {
 		const savedTheme = localStorage.getItem('theme');
-		if (
+		darkMode =
 			savedTheme === 'dark' ||
-			(!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)
-		) {
+			(!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+		if (darkMode) {
 			document.documentElement.classList.add('dark');
 		}
+
+		window.addEventListener('beforeinstallprompt', (e) => {
+			e.preventDefault();
+			installPrompt = e as BeforeInstallPromptEvent;
+			showInstall = true;
+		});
 
 		try {
 			[annotations, books] = await Promise.all([getAllAnnotations(), getAllBooks()]);
@@ -42,6 +58,27 @@
 			loading = false;
 		}
 	});
+
+	function toggleDarkMode() {
+		darkMode = !darkMode;
+		if (darkMode) {
+			document.documentElement.classList.add('dark');
+			localStorage.setItem('theme', 'dark');
+		} else {
+			document.documentElement.classList.remove('dark');
+			localStorage.setItem('theme', 'light');
+		}
+	}
+
+	async function handleInstall() {
+		if (!installPrompt) return;
+		installPrompt.prompt();
+		const { outcome } = await installPrompt.userChoice;
+		if (outcome === 'accepted') {
+			showInstall = false;
+			installPrompt = null;
+		}
+	}
 
 	function openLibrary() {
 		goto(resolve('/'));
@@ -77,38 +114,32 @@
 
 <svelte:head><title>Annotations · Granthalay</title></svelte:head>
 
-<div class="min-h-screen bg-background px-4 pt-5 pb-24 text-foreground sm:px-6 lg:px-8">
-	<header class="mx-auto max-w-7xl">
-		<p class="text-sm font-medium text-primary">Your reading</p>
-		<div class="mt-1 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-			<div>
-				<h1 class="text-2xl font-bold tracking-tight sm:text-3xl">Bookmarks and highlights</h1>
-				<p class="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">
-					Review passages saved locally across your library.
-				</p>
-			</div>
+<div
+	class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300"
+>
+	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-			<div
-				class="flex w-full gap-1 rounded-lg bg-muted p-1 sm:w-auto"
-				aria-label="Filter annotations"
-			>
-				{#each ['all', 'bookmark', 'highlight'] as option (option)}
-					<button
-						type="button"
-						class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors sm:flex-none"
-						class:bg-background={filter === option}
-						class:shadow-sm={filter === option}
-						onclick={() => (filter = option as AnnotationFilter)}
-						aria-pressed={filter === option}
-					>
-						{option === 'all' ? 'All' : `${option}s`}
-					</button>
-				{/each}
-			</div>
+	<header class="mb-4 flex items-center justify-between">
+		<div
+			class="flex w-full gap-1 rounded-lg bg-muted p-1 sm:w-auto"
+			aria-label="Filter annotations"
+		>
+			{#each ['all', 'bookmark', 'highlight'] as option (option)}
+				<button
+					type="button"
+					class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium capitalize transition-colors sm:flex-none"
+					class:bg-background={filter === option}
+					class:shadow-sm={filter === option}
+					onclick={() => (filter = option as AnnotationFilter)}
+					aria-pressed={filter === option}
+				>
+					{option === 'all' ? 'All' : `${option}s`}
+				</button>
+			{/each}
 		</div>
 	</header>
 
-	<main class="mx-auto mt-6 max-w-7xl">
+	<main class="mt-4">
 		{#if loading}
 			<p class="py-16 text-center text-muted-foreground" role="status">Loading annotations…</p>
 		{:else if error}

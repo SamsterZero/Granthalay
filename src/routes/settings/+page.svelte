@@ -2,15 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import {
-		CircleCheck,
-		Download,
-		ExternalLink,
-		Menu,
-		RefreshCw,
-		Trash2,
-		Upload
-	} from 'lucide-svelte';
+	import { CircleCheck, Download, ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-svelte';
 	import {
 		backupErrorMessage,
 		backupImportErrorMessage,
@@ -32,10 +24,11 @@
 		validateBackupPassphrase
 	} from '$lib/backup-crypto';
 	import LibraryBottomBar from '$lib/components/library/LibraryBottomBar.svelte';
+	import TopBar from '$lib/components/library/TopBar.svelte';
 	import ReaderAppearance from '$lib/components/reader/ReaderAppearance.svelte';
+	import AccountSection from '$lib/components/settings/AccountSection.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
-	import * as Sheet from '$lib/components/ui/sheet';
 	import { deleteBooksByIds, getAllAnnotations, getAllBooks, type BookMetadata } from '$lib/db';
 	import {
 		DEFAULT_READER_PREFERENCES,
@@ -50,6 +43,7 @@
 	} from '$lib/storage-health';
 
 	const settingsSections = [
+		{ id: 'account', label: 'Account & Security' },
 		{ id: 'appearance', label: 'Appearance' },
 		{ id: 'behavior', label: 'Reading behavior' },
 		{ id: 'backup-restore', label: 'Backup & restore' },
@@ -66,10 +60,17 @@
 		}
 	] as const;
 
+	interface BeforeInstallPromptEvent extends Event {
+		prompt: () => void;
+		userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+	}
+
 	let preferences = $state<ReaderPreferences>({ ...DEFAULT_READER_PREFERENCES });
-	let activeSection = $state<(typeof settingsSections)[number]['id']>('appearance');
+	let activeSection = $state<(typeof settingsSections)[number]['id']>('account');
 	let annotationCount = $state(0);
-	let menuOpen = $state(false);
+	let darkMode = $state(false);
+	let showInstall = $state(false);
+	let installPrompt = $state<BeforeInstallPromptEvent | null>(null);
 	let exporting = $state(false);
 	let exportStatus = $state('');
 	let exportPassphrase = $state('');
@@ -100,7 +101,17 @@
 			activeSection = requestedSection as (typeof settingsSections)[number]['id'];
 		}
 		preferences = loadGlobalReaderPreferences();
+		darkMode =
+			preferences.theme === 'dark' ||
+			(preferences.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 		applyTheme(preferences.theme);
+
+		window.addEventListener('beforeinstallprompt', (e) => {
+			e.preventDefault();
+			installPrompt = e as BeforeInstallPromptEvent;
+			showInstall = true;
+		});
+
 		try {
 			annotationCount = (await getAllAnnotations()).length;
 		} catch {
@@ -108,6 +119,22 @@
 		}
 		await refreshStorageHealth();
 	});
+
+	function toggleDarkMode() {
+		darkMode = !darkMode;
+		const newTheme = darkMode ? 'dark' : 'light';
+		updatePreferences({ theme: newTheme });
+	}
+
+	async function handleInstall() {
+		if (!installPrompt) return;
+		installPrompt.prompt();
+		const { outcome } = await installPrompt.userChoice;
+		if (outcome === 'accepted') {
+			showInstall = false;
+			installPrompt = null;
+		}
+	}
 
 	async function refreshStorageHealth() {
 		loadingStorage = true;
@@ -193,7 +220,6 @@
 	}
 
 	function showSection(id: (typeof settingsSections)[number]['id']) {
-		menuOpen = false;
 		activeSection = id;
 		history.replaceState(null, '', `#${id}`);
 	}
@@ -312,60 +338,32 @@
 
 <svelte:head><title>Settings · Granthalay</title></svelte:head>
 
-<div class="min-h-screen bg-background pb-24 font-sans text-foreground">
-	<header class="sticky top-0 z-30 h-14 bg-background/95 shadow-sm backdrop-blur">
-		<div class="mx-auto flex h-full max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-8">
-			<Sheet.Root bind:open={menuOpen}>
-				<Sheet.Trigger>
-					{#snippet child({ props })}
-						<Button
-							variant="ghost"
-							size="icon"
-							class="shrink-0 lg:hidden"
-							aria-label="Open settings menu"
-							{...props}
-						>
-							<Menu class="h-5 w-5" />
-						</Button>
-					{/snippet}
-				</Sheet.Trigger>
-				<Sheet.Content side="left" class="w-72">
-					<Sheet.Header>
-						<Sheet.Title>Settings</Sheet.Title>
-						<Sheet.Description>Choose a section.</Sheet.Description>
-					</Sheet.Header>
-					<nav class="grid gap-1 px-3" aria-label="Settings sections">
-						{#each settingsSections as section (section.id)}
-							<button
-								type="button"
-								class="rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-muted focus-visible:outline-2"
-								onclick={() => showSection(section.id)}
-								aria-current={activeSection === section.id ? 'page' : undefined}
-							>
-								{section.label}
-							</button>
-						{/each}
-						{#each policyLinks as link (link.href)}
-							<a
-								href={link.href}
-								target="_blank"
-								rel="noreferrer"
-								class="flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2"
-							>
-								{link.label}
-								<ExternalLink class="h-4 w-4" aria-hidden="true" />
-							</a>
-						{/each}
-					</nav>
-				</Sheet.Content>
-			</Sheet.Root>
+<div
+	class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300"
+>
+	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
-			<h1 class="text-lg font-semibold tracking-tight">Settings</h1>
-		</div>
-	</header>
+	<nav
+		class="mb-4 flex gap-1 overflow-x-auto border-b border-border pb-2 lg:hidden"
+		aria-label="Settings sections"
+	>
+		{#each settingsSections as section (section.id)}
+			<button
+				type="button"
+				class="shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+				class:bg-primary={activeSection === section.id}
+				class:text-primary-foreground={activeSection === section.id}
+				class:text-muted-foreground={activeSection !== section.id}
+				onclick={() => showSection(section.id)}
+				aria-current={activeSection === section.id ? 'page' : undefined}
+			>
+				{section.label}
+			</button>
+		{/each}
+	</nav>
 
 	<main
-		class="mx-auto grid max-w-7xl gap-8 px-4 pt-2 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
+		class="grid gap-8 px-4 pt-2 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-start lg:px-8"
 	>
 		<aside class="sticky top-6 hidden lg:block">
 			<nav class="grid gap-1" aria-label="Settings sections">
@@ -396,7 +394,9 @@
 		</aside>
 
 		<div class="min-w-0">
-			{#if activeSection === 'appearance'}
+			{#if activeSection === 'account'}
+				<AccountSection />
+			{:else if activeSection === 'appearance'}
 				<section id="appearance" class="scroll-mt-20">
 					<ReaderAppearance
 						{preferences}
