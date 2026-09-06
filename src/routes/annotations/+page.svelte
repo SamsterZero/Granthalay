@@ -18,7 +18,7 @@
 	let filter = $state<AnnotationFilter>('all');
 	let darkMode = $state(false);
 	let showInstall = $state(false);
-	let installPrompt = $state<any>(null);
+	let installPrompt = $state<unknown>(null);
 
 	let filteredAnnotations = $derived(
 		filter === 'all' ? annotations : annotations.filter((annotation) => annotation.kind === filter)
@@ -109,7 +109,9 @@
 
 <svelte:head><title>Annotations · Granthalay</title></svelte:head>
 
-<div class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300">
+<div
+	class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300"
+>
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
 	<header class="mb-4 flex items-center justify-between">

@@ -180,12 +180,12 @@
 						<p class="text-xs text-muted-foreground">Current session is active.</p>
 					{:else}
 						<div class="divide-y divide-border">
-							{#each authState.sessions as session}
+							{#each authState.sessions as session (session.id)}
 								<div class="flex items-center justify-between py-3 text-sm">
 									<div class="flex items-center gap-3">
 										<Laptop size={18} class="shrink-0 text-muted-foreground" />
 										<div>
-											<div class="font-medium text-xs sm:text-sm">
+											<div class="text-xs font-medium sm:text-sm">
 												{session.userAgent || 'Unknown Device'}
 												{#if session.current}
 													<Badge variant="secondary" class="ml-2 text-[10px]">This Device</Badge>

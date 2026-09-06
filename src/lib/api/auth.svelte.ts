@@ -81,7 +81,9 @@ class AuthStore {
 		} catch (err: unknown) {
 			if (err instanceof ApiOfflineError) {
 				this.isOffline = true;
-				throw new Error('API is currently offline. Please try again when back online.');
+				throw new Error('API is currently offline. Please try again when back online.', {
+					cause: err
+				});
 			}
 			if (err instanceof ApiError) {
 				this.error = err.message;
@@ -102,7 +104,7 @@ class AuthStore {
 		} catch (err: unknown) {
 			if (err instanceof ApiOfflineError) {
 				this.isOffline = true;
-				throw new Error('API is currently offline.');
+				throw new Error('API is currently offline.', { cause: err });
 			}
 			if (err instanceof ApiError) {
 				this.error = err.message;
@@ -124,7 +126,8 @@ class AuthStore {
 			if (err instanceof ApiOfflineError) {
 				this.isOffline = true;
 				throw new Error(
-					'API is currently offline. Reader functions remain fully available local-first.'
+					'API is currently offline. Reader functions remain fully available local-first.',
+					{ cause: err }
 				);
 			}
 			if (err instanceof ApiError) {
@@ -156,7 +159,7 @@ class AuthStore {
 		} catch (err: unknown) {
 			if (err instanceof ApiOfflineError) {
 				this.isOffline = true;
-				throw new Error('API is currently offline.');
+				throw new Error('API is currently offline.', { cause: err });
 			}
 			if (err instanceof ApiError) {
 				this.error = err.message;
@@ -175,7 +178,7 @@ class AuthStore {
 		} catch (err: unknown) {
 			if (err instanceof ApiOfflineError) {
 				this.isOffline = true;
-				throw new Error('API is currently offline.');
+				throw new Error('API is currently offline.', { cause: err });
 			}
 			if (err instanceof ApiError) {
 				this.error = err.message;
@@ -194,7 +197,7 @@ class AuthStore {
 		} catch (err: unknown) {
 			if (err instanceof ApiOfflineError) {
 				this.isOffline = true;
-				throw new Error('API is currently offline.');
+				throw new Error('API is currently offline.', { cause: err });
 			}
 			if (err instanceof ApiError) {
 				this.error = err.message;

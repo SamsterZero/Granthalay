@@ -143,7 +143,7 @@
 					</Button>
 
 					<div class="text-center text-xs text-muted-foreground">
-						Already have an account?{' '}
+						Already have an account?
 						<a href="/account/sign-in" class="font-medium text-primary hover:underline">
 							Sign in
 						</a>

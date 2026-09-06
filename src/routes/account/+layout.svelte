@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ArrowLeft, WifiOff, UserCheck } from 'lucide-svelte';
-	import { Button } from '$lib/components/ui/button';
+	import { ArrowLeft, WifiOff } from 'lucide-svelte';
 	import { authState } from '$lib/api/auth.svelte';
 
 	let { children } = $props();

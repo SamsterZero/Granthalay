@@ -2,14 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { onMount } from 'svelte';
-	import {
-		CircleCheck,
-		Download,
-		ExternalLink,
-		RefreshCw,
-		Trash2,
-		Upload
-	} from 'lucide-svelte';
+	import { CircleCheck, Download, ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-svelte';
 	import {
 		backupErrorMessage,
 		backupImportErrorMessage,
@@ -72,7 +65,7 @@
 	let annotationCount = $state(0);
 	let darkMode = $state(false);
 	let showInstall = $state(false);
-	let installPrompt = $state<any>(null);
+	let installPrompt = $state<unknown>(null);
 	let exporting = $state(false);
 	let exportStatus = $state('');
 	let exportPassphrase = $state('');
@@ -105,8 +98,7 @@
 		preferences = loadGlobalReaderPreferences();
 		darkMode =
 			preferences.theme === 'dark' ||
-			(preferences.theme === 'system' &&
-				window.matchMedia('(prefers-color-scheme: dark)').matches);
+			(preferences.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 		applyTheme(preferences.theme);
 
 		window.addEventListener('beforeinstallprompt', (e) => {
@@ -341,11 +333,13 @@
 
 <svelte:head><title>Settings · Granthalay</title></svelte:head>
 
-<div class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300">
+<div
+	class="min-h-screen bg-background p-4 pb-24 font-sans text-foreground transition-colors duration-300"
+>
 	<TopBar {darkMode} {showInstall} onTheme={toggleDarkMode} onInstall={handleInstall} />
 
 	<nav
-		class="mb-4 flex overflow-x-auto gap-1 border-b border-border pb-2 lg:hidden"
+		class="mb-4 flex gap-1 overflow-x-auto border-b border-border pb-2 lg:hidden"
 		aria-label="Settings sections"
 	>
 		{#each settingsSections as section (section.id)}

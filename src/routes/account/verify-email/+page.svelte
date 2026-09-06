@@ -10,8 +10,7 @@
 		CardHeader,
 		CardTitle,
 		CardDescription,
-		CardContent,
-		CardFooter
+		CardContent
 	} from '$lib/components/ui/card';
 	import { Alert, AlertDescription } from '$lib/components/ui/alert';
 	import { ShieldCheck, AlertCircle, CheckCircle2 } from 'lucide-svelte';

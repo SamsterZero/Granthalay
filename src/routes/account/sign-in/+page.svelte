@@ -108,7 +108,7 @@
 				</Button>
 
 				<div class="text-center text-xs text-muted-foreground">
-					Don't have an account?{' '}
+					Don't have an account?
 					<a href="/account/register" class="font-medium text-primary hover:underline">
 						Create one
 					</a>
