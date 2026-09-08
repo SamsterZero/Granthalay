@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { Bookmark, Library, ShoppingBag, User } from 'lucide-svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	let {
 		active,
 		annotationCount = 0,
-		onOpenLibrary = () => goto('/'),
-		onOpenStore = () => goto('/store'),
-		onOpenAnnotations = () => goto('/annotations'),
-		onOpenSettings = () => goto('/settings')
+		onOpenLibrary = () => goto(resolve('/')),
+		onOpenStore = () => goto(resolve('/store')),
+		onOpenAnnotations = () => goto(resolve('/annotations')),
+		onOpenSettings = () => goto(resolve('/settings'))
 	}: {
 		active: 'library' | 'store' | 'annotations' | 'settings' | 'account';
 		annotationCount?: number;

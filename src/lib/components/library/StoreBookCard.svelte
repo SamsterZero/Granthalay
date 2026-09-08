@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { AspectRatio } from '$lib/components/ui/aspect-ratio';
 	import { getTitleDisplayPrice } from '$lib/api/catalog';
+	import { resolve } from '$app/paths';
 
 	interface Props {
 		slug: string;
@@ -33,7 +34,7 @@
 </script>
 
 <a
-	href="/store/{slug}"
+	href={resolve('/store/[slug]', { slug })}
 	class="group block rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
 	aria-label={`View ${title}${author ? ` by ${author}` : ''}`}
 >

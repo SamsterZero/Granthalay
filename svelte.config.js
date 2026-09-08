@@ -18,7 +18,7 @@ const config = {
 		},
 		prerender: {
 			handleUnseenRoutes: 'ignore',
-			entries: ['*']
+			entries: ['*', '/', '/store', '/annotations', '/settings']
 		}
 	}
 };

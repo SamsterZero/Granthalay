@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import {
 		ArrowLeft,
 		BookOpen,
@@ -155,7 +156,7 @@
 				variant="ghost"
 				size="sm"
 				class="gap-1 pl-1 text-muted-foreground hover:text-foreground"
-				onclick={() => goto('/store')}
+				onclick={() => goto(resolve('/store'))}
 			>
 				<ArrowLeft class="h-4 w-4" />
 				Back to Storefront
@@ -181,7 +182,9 @@
 								<RefreshCw class="mr-2 h-3.5 w-3.5" />
 								Retry
 							</Button>
-							<Button variant="ghost" size="sm" onclick={() => goto('/')}>Go to Library</Button>
+							<Button variant="ghost" size="sm" onclick={() => goto(resolve('/'))}
+								>Go to Library</Button
+							>
 						</div>
 					</div>
 				</div>
